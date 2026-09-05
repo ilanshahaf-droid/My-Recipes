@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#F6F3EA">
+<title>מה יש במקרר?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F6F3EA;
+    --ink:#2B2A26;
+    --ink-soft:#6B675E;
+    --line:#E4DFD0;
+    --surface:#FFFFFF;
+    --brick:#C1442E;
+    --brick-soft:#F3DCD6;
+    --herb:#5B7553;
+    --herb-soft:#E3EADD;
+    --mustard:#B8842A;
+    --mustard-soft:#F3E6CA;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Assistant',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  .wrap{
+    max-width:640px;
+    margin:0 auto;
+    padding:0 18px 80px;
+  }
+  header.top{
+    position:sticky;
+    top:0;
+    background:var(--paper);
+    z-index:10;
+    padding:22px 0 14px;
+    border-bottom:1px solid var(--line);
+  }
+  header.top h1{
+    font-family:'Frank Ruhl Libre',serif;
+    font-weight:900;
+    font-size:28px;
+    margin:0 0 4px;
+    letter-spacing:.2px;
+  }
+  header.top p{
+    margin:0;
+    color:var(--ink-soft);
+    font-size:14px;
+  }
+  .fridge-summary{
+    margin-top:14px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .fridge-count{
+    font-size:14px;
+    color:var(--ink-soft);
+  }
+  .fridge-count b{color:var(--ink); font-weight:700;}
+  .fridge-actions{
+    display:flex;
+    gap:14px;
+  }
+  .fridge-actions button{
+    background:none;
+    border:none;
+    padding:0;
+    font-size:13.5px;
+    font-weight:600;
+    color:var(--herb);
+    cursor:pointer;
+    font-family:'Assistant',sans-serif;
+  }
+  .fridge-actions button.clear-btn{color:var(--brick);}
+  .fridge-empty{
+    color:var(--ink-soft);
+    font-size:14px;
+    padding:6px 0;
+    margin-top:14px;
+  }
+  .fridge-panel{
+    max-height:0;
+    overflow:hidden;
+    transition:max-height .2s ease;
+  }
+  .fridge-panel.open{
+    max-height:120px;
+    overflow-y:auto;
+    margin-top:10px;
+  }
+  .fridge-panel-inner{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    padding-bottom:4px;
+  }
+  .chip{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background:var(--herb-soft);
+    color:var(--herb);
+    border:1px solid transparent;
+    border-radius:100px;
+    padding:6px 8px 6px 14px;
+    font-size:14px;
+    font-weight:600;
+  }
+  .chip button{
+    background:none;
+    border:none;
+    color:var(--herb);
+    font-size:16px;
+    line-height:1;
+    cursor:pointer;
+    padding:2px 4px;
+    opacity:.7;
+  }
+  .chip button:hover{opacity:1;}
+
+  section{margin-top:26px;}
+  section > h2{
+    font-family:'Frank Ruhl Libre',serif;
+    font-weight:700;
+    font-size:19px;
+    margin:0 0 12px;
+  }
+
+  .add-row{
+    display:flex;
+    gap:8px;
+    margin-bottom:14px;
+  }
+  .add-row input{
+    flex:1;
+    border:1px solid var(--line);
+    background:var(--surface);
+    border-radius:12px;
+    padding:12px 14px;
+    font-size:15px;
+    font-family:'Assistant',sans-serif;
+    color:var(--ink);
+  }
+  .add-row input:focus{outline:2px solid var(--brick); outline-offset:1px;}
+  .add-row button{
+    border:none;
+    background:var(--brick);
+    color:#fff;
+    border-radius:12px;
+    padding:0 18px;
+    font-size:15px;
+    font-weight:600;
+    font-family:'Assistant',sans-serif;
+    cursor:pointer;
+  }
+  .add-row button:active{transform:scale(.97);}
+
+  .cat-tabs{
+    display:flex;
+    gap:6px;
+    overflow-x:auto;
+    padding-bottom:4px;
+    margin-bottom:12px;
+    scrollbar-width:none;
+  }
+  .cat-tabs::-webkit-scrollbar{display:none;}
+  .cat-tab{
+    flex:none;
+    border:1px solid var(--line);
+    background:var(--surface);
+    color:var(--ink-soft);
+    padding:7px 14px;
+    border-radius:100px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    white-space:nowrap;
+    font-family:'Assistant',sans-serif;
+  }
+  .cat-tab.active{
+    background:var(--ink);
+    color:var(--paper);
+    border-color:var(--ink);
+  }
+
+  .item-grid{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .item-btn{
+    border:1px solid var(--line);
+    background:var(--surface);
+    color:var(--ink);
+    padding:8px 14px;
+    border-radius:100px;
+    font-size:14px;
+    cursor:pointer;
+    font-family:'Assistant',sans-serif;
+  }
+  .item-btn.selected{
+    background:var(--herb);
+    border-color:var(--herb);
+    color:#fff;
+    font-weight:600;
+  }
+
+  .empty-state{
+    font-family:'Frank Ruhl Libre',serif;
+    font-size:19px;
+    line-height:1.6;
+    color:var(--ink-soft);
+    padding:30px 6px;
+    border-top:1px solid var(--line);
+  }
+
+  .daily-card{
+    background:var(--mustard-soft);
+    border:1px solid transparent;
+    border-radius:16px;
+    padding:16px 18px;
+    cursor:pointer;
+  }
+  .daily-label{
+    font-size:12.5px;
+    font-weight:700;
+    color:var(--mustard);
+    margin-bottom:4px;
+  }
+  .daily-card h3{
+    font-family:'Frank Ruhl Libre',serif;
+    font-weight:700;
+    font-size:19px;
+    margin:0 0 4px;
+  }
+  .daily-card .recipe-meta{margin-top:0;}
+  .daily-card .recipe-body{border-top-color:rgba(184,132,42,.25);}
+
+  .filters-wrap{
+    margin-bottom:16px;
+  }
+  .search-row{
+    margin-bottom:10px;
+  }
+  .search-row input{
+    width:100%;
+    border:1px solid var(--line);
+    background:var(--surface);
+    border-radius:12px;
+    padding:11px 14px;
+    font-size:14.5px;
+    font-family:'Assistant',sans-serif;
+    color:var(--ink);
+  }
+  .search-row input:focus{outline:2px solid var(--brick); outline-offset:1px;}
+  .filter-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    align-items:center;
+  }
+  .filter-chip{
+    border:1px solid var(--line);
+    background:var(--surface);
+    color:var(--ink-soft);
+    padding:7px 13px;
+    border-radius:100px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    font-family:'Assistant',sans-serif;
+    white-space:nowrap;
+  }
+  .filter-chip.active{
+    background:var(--herb);
+    border-color:var(--herb);
+    color:#fff;
+  }
+  .time-select{
+    border:1px solid var(--line);
+    background:var(--surface);
+    color:var(--ink-soft);
+    padding:7px 10px;
+    border-radius:100px;
+    font-size:13px;
+    font-weight:600;
+    font-family:'Assistant',sans-serif;
+    cursor:pointer;
+  }
+
+  .card-actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:14px;
+    padding-top:14px;
+    border-top:1px solid var(--line);
+  }
+  .action-btn{
+    border:1px solid var(--line);
+    background:var(--paper);
+    color:var(--ink);
+    padding:8px 12px;
+    border-radius:10px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    font-family:'Assistant',sans-serif;
+  }
+  .action-btn.cooked{
+    background:var(--herb-soft);
+    border-color:transparent;
+    color:var(--herb);
+  }
+  .cooked-badge{color:var(--herb); font-weight:700;}
+
+  .shopping-panel{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:16px 18px;
+  }
+  .shopping-empty{
+    color:var(--ink-soft);
+    font-size:14px;
+  }
+  .shopping-list{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-bottom:14px;
+  }
+  .shopping-list .chip{
+    background:var(--brick-soft);
+    color:var(--brick);
+  }
+  .shopping-list .chip button{color:var(--brick);}
+  .shopping-buttons{
+    display:flex;
+    gap:10px;
+  }
+  .shopping-buttons button{
+    border:none;
+    background:var(--ink);
+    color:var(--paper);
+    padding:8px 14px;
+    border-radius:10px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    font-family:'Assistant',sans-serif;
+  }
+  .shopping-buttons button.secondary{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--ink-soft);
+  }
+
+  .recipe-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:16px 18px;
+    margin-bottom:12px;
+    cursor:pointer;
+  }
+  .recipe-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    gap:12px;
+  }
+  .recipe-head h3{
+    font-family:'Frank Ruhl Libre',serif;
+    font-weight:700;
+    font-size:18px;
+    margin:0;
+  }
+  .match-frac{
+    font-size:14px;
+    font-weight:700;
+    white-space:nowrap;
+  }
+  .match-full{color:var(--herb);}
+  .match-partial{color:var(--mustard);}
+  .recipe-meta{
+    color:var(--ink-soft);
+    font-size:13px;
+    margin-top:4px;
+  }
+  .missing-line{
+    margin-top:10px;
+    font-size:13.5px;
+    color:var(--brick);
+  }
+  .recipe-body{
+    display:none;
+    margin-top:14px;
+    padding-top:14px;
+    border-top:1px solid var(--line);
+  }
+  .recipe-card.open .recipe-body{display:block;}
+  .recipe-body h4{
+    font-size:13px;
+    margin:0 0 6px;
+    color:var(--ink-soft);
+    font-weight:600;
+  }
+  .ing-list{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-bottom:14px;
+  }
+  .ing-pill{
+    font-size:12.5px;
+    padding:4px 10px;
+    border-radius:100px;
+    background:var(--paper);
+    border:1px solid var(--line);
+  }
+  .ing-pill.have{background:var(--herb-soft); color:var(--herb); border-color:transparent;}
+  .ing-pill.miss{background:var(--brick-soft); color:var(--brick); border-color:transparent;}
+  .steps{
+    margin:0;
+    padding-inline-start:20px;
+    font-size:14.5px;
+    line-height:1.75;
+  }
+  .steps li{margin-bottom:4px;}
+
+  footer.hint{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:12.5px;
+    margin-top:36px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <h1>מה יש במקרר?</h1>
+    <p>סמנו מה יש בבית, ונציע מה אפשר לבשל</p>
+    <div id="fridgeSummaryWrap"></div>
+  </header>
+
+  <section>
+    <h2>מתכון היום</h2>
+    <div id="dailyRecipe"></div>
+  </section>
+
+  <section>
+    <h2>הוספה מהירה</h2>
+    <div class="add-row">
+      <input type="text" id="customInput" placeholder="הקלידו מצרך והוסיפו...">
+      <button id="customAddBtn">הוספה</button>
+    </div>
+    <div class="cat-tabs" id="catTabs"></div>
+    <div class="item-grid" id="itemGrid"></div>
+  </section>
+
+  <section>
+    <h2>מתכונים מתאימים</h2>
+    <div class="filters-wrap">
+      <div class="search-row">
+        <input type="text" id="searchInput" placeholder="חיפוש מתכון לפי שם...">
+      </div>
+      <div class="filter-row" id="filterRow"></div>
+    </div>
+    <div id="recipeResults">
+      <p class="empty-state">ברגע שיהיה משהו במקרר, כאן יופיעו הצעות למתכונים — מהקרוב ביותר למה שיש, ועד לרחוקים יותר.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>רשימת קניות</h2>
+    <div class="shopping-panel" id="shoppingPanel"></div>
+  </section>
+
+  <footer class="hint">הנתונים נשמרים במכשיר שלכם בלבד · חלק מהמתכונים בהשראת heli-group.co.il</footer>
+</div>
+
+<script>
+const CATALOG = {
+  "ירקות": ["עגבניות","מלפפונים","בצל","שום","גזר","פלפל","תפוחי אדמה","קישואים","חסה","כרוב","פטריות","תרד","בטטה","ברוקולי","אפונה קפואה"],
+  "חלבונים": ["ביצים","עוף","בשר טחון","טונה","גבינה צהובה","גבינה לבנה","קוטג'","טופו","נקניקיות","מוצרלה"],
+  "מוצרי חלב": ["חלב","יוגורט","חמאה","שמנת מתוקה","שמנת חמוצה","גבינת שמנת"],
+  "פחמימות": ["אורז","פסטה","לחם","קמח","תפוחי אדמה","קינואה","בורגול","פיתות"],
+  "מזווה": ["שמן זית","מלח","פלפל שחור","סוכר","רוטב סויה","טחינה","חומץ","דבש","אבקת אפייה","חמאת בוטנים"],
+  "פירות": ["תפוח","בננה","לימון","ענבים"]
+};
+
+const RECIPES = [
+  {name:"שקשוקה", time:"20 דק׳", healthy:true, ingredients:["עגבניות","בצל","שום","ביצים","שמן זית","מלח","פלפל שחור"],
+   steps:["מטגנים בצל ושום בשמן זית עד השחמה קלה","מוסיפים עגבניות קצוצות ומבשלים כ-10 דקות עד לרוטב סמיך","יוצרים גומחות ושוברים לתוכן ביצים","מכסים ומבשלים על אש נמוכה עד שהחלבון מתקשה","מתבלים במלח ופלפל ומגישים חם עם לחם"]},
+  {name:"חביתת ירקות", time:"12 דק׳", healthy:true, ingredients:["ביצים","בצל","פלפל","גבינה צהובה","מלח","שמן זית"],
+   steps:["טורפים ביצים עם מלח","מטגנים בצל ופלפל קצוצים בשמן זית עד שמתרככים","יוצקים את הביצים ומפזרים גבינה מגורדת","מבשלים על אש נמוכה עד שהחביתה נקרשת","מקפלים לשניים ומגישים"]},
+  {name:"פסטה ברוטב עגבניות", time:"25 דק׳", ingredients:["פסטה","עגבניות","שום","בצל","שמן זית","מלח"],
+   steps:["מבשלים פסטה במים רותחים עם מלח לפי ההוראות על האריזה","במקביל מטגנים שום ובצל בשמן זית","מוסיפים עגבניות קצוצות ומבשלים לרוטב סמיך כ-15 דקות","מערבבים את הפסטה המסוננת לתוך הרוטב","מגישים חם, אפשר לפזר גבינה מגורדת"]},
+  {name:"מרק ירקות", time:"40 דק׳", healthy:true, ingredients:["גזר","תפוחי אדמה","בצל","שום","קישואים","מלח","פלפל שחור"],
+   steps:["מטגנים בצל ושום בסיר עמוק עד השחמה","מוסיפים את שאר הירקות חתוכים לקוביות","מכסים במים ומביאים לרתיחה","מנמיכים אש ומבשלים כ-30 דקות עד שהירקות רכים","מתבלים במלח ופלפל, אפשר לטחות חלק מהמרק להסמכה"]},
+  {name:"אורז מוקפץ עם ירקות", time:"20 דק׳", healthy:true, ingredients:["אורז","גזר","בצל","ביצים","רוטב סויה","שמן זית"],
+   steps:["מבשלים אורז מראש ומצננים (עדיף אורז מיום קודם)","מטגנים בצל וגזר קצוצים דק בשמן חם","דוחפים לצד המחבת וטורפים בה ביצים עד שמתקשות","מוסיפים את האורז ורוטב הסויה ומקפיצים הכל יחד כ-5 דקות"]},
+  {name:"עוף בתנור עם תפוחי אדמה", time:"55 דק׳", healthy:true, ingredients:["עוף","תפוחי אדמה","שום","שמן זית","מלח","פלפל שחור"],
+   steps:["חותכים תפוחי אדמה לקוביות ומניחים בתבנית עם העוף","מתבלים הכל בשמן זית, שום כתוש, מלח ופלפל","אופים בתנור שחומם מראש ל-200 מעלות כ-45 דקות","הופכים באמצע האפייה עד שהעוף שחום והתפוחי אדמה רכים"]},
+  {name:"סלט טונה", time:"10 דק׳", healthy:true, ingredients:["טונה","עגבניות","מלפפונים","בצל","שמן זית","מלח"],
+   steps:["מסננים את הטונה משמן או מים","קוצצים עגבניות, מלפפונים ובצל לקוביות קטנות","מערבבים הכל בקערה עם שמן זית ומלח","מגישים לצד לחם או כמילוי לפיתה"]},
+  {name:"פריטטה בתנור", time:"35 דק׳", ingredients:["ביצים","קישואים","בצל","גבינה צהובה","שמן זית","מלח"],
+   steps:["מטגנים קישואים ובצל קצוצים עד להזהבה","טורפים ביצים עם מלח וגבינה מגורדת ומערבבים עם הירקות","יוצקים לתבנית אפייה משומנת","אופים ב-180 מעלות כ-25 דקות עד שנקרש ומשחים למעלה"]},
+  {name:"טוסט גבינה", time:"7 דק׳", ingredients:["לחם","גבינה צהובה","חמאה"],
+   steps:["מורחים חמאה על צד חיצוני של כל פרוסת לחם","ממלאים בגבינה בין שתי הפרוסות","מטגנים במחבת חמה משני הצדדים עד שהלחם פריך והגבינה נמסה"]},
+  {name:"מרק עוף", time:"70 דק׳", healthy:true, ingredients:["עוף","גזר","בצל","שום","תפוחי אדמה","מלח"],
+   steps:["מניחים את העוף בסיר גדול עם מים קרים ומביאים לרתיחה","מסירים קצף, מוסיפים בצל, שום וגזר שלמים","מבשלים על אש נמוכה כשעה","מוסיפים תפוחי אדמה חתוכים ומבשלים עוד 20 דקות","מתבלים במלח ומגישים חם"]},
+  {name:"פסטה ברוטב שמנת", time:"20 דק׳", ingredients:["פסטה","שמנת מתוקה","שום","גבינה צהובה","מלח","פלפל שחור"],
+   steps:["מבשלים פסטה במים רותחים ומלוחים","מטגנים שום קצוץ במחבת בשמן זית","מוסיפים שמנת מתוקה ומחממים בעדינות","מערבבים פנימה גבינה מגורדת עד שנמסה לרוטב חלק","מוסיפים את הפסטה, מתבלים ומגישים"]},
+  {name:"סלט ישראלי", time:"10 דק׳", healthy:true, ingredients:["עגבניות","מלפפונים","בצל","שמן זית","מלח"],
+   steps:["קוצצים עגבניות ומלפפונים לקוביות קטנות ואחידות","קוצצים בצל דק מאוד","מערבבים הכל בקערה עם שמן זית ומלח"]},
+  {name:"כריך חביתה", time:"8 דק׳", ingredients:["ביצים","לחם","מלח","שמן זית"],
+   steps:["טורפים ביצה עם מלח","מטגנים בשמן זית עד שנקרשת משני הצדדים","מניחים בין שתי פרוסות לחם ומגישים"]},
+  {name:"פשטידת ירקות", time:"50 דק׳", healthy:true, ingredients:["קמח","ביצים","חלב","קישואים","גבינה צהובה","אבקת אפייה","מלח"],
+   steps:["מערבבים קמח, ביצים, חלב ואבקת אפייה לבלילה חלקה","מוסיפים קישואים מגוררים וגבינה מגורדת","יוצקים לתבנית משומנת","אופים ב-180 מעלות כ-40 דקות עד שהשחים ומוצק במרכז"]},
+  {name:"מרק עדשים", time:"45 דק׳", healthy:true, ingredients:["גזר","בצל","שום","תפוחי אדמה","שמן זית","מלח"],
+   steps:["מטגנים בצל ושום בסיר עד השחמה","מוסיפים גזר ותפוחי אדמה חתוכים ומכסים במים","מבשלים על אש בינונית כ-35 דקות עד שהירקות רכים מאוד","טוחנים לרוטב חלק ומתבלים במלח"]},
+  {name:"קציצות בשר", time:"30 דק׳", ingredients:["בשר טחון","בצל","שום","ביצים","מלח","פלפל שחור"],
+   steps:["מערבבים בשר טחון עם בצל ושום קצוצים דק","מוסיפים ביצה, מלח ופלפל ומערבבים לתערובת אחידה","מעצבים קציקות ומטגנים במחבת חמה עד השחמה מכל הצדדים"]},
+  {name:"פסטה עם טונה ועגבניות", time:"20 דק׳", healthy:true, ingredients:["פסטה","טונה","עגבניות","שום","שמן זית","מלח"],
+   steps:["מבשלים פסטה במים רותחים ומלוחים","מטגנים שום בשמן זית ומוסיפים עגבניות קצוצות","מבשלים כ-10 דקות ומוסיפים טונה מסוננת","מערבבים פנימה את הפסטה ומגישים"]},
+  {name:"טוסט אבוקדו", time:"6 דק׳", ingredients:["לחם","מלח","שמן זית"],
+   steps:["קולים את הלחם","מורחים עליו אבוקדו מרוסק (אם יש) או פשוט מתבלים שמן זית ומלח","מגישים מיד"]},
+  {name:"פנקייק פשוט", time:"15 דק׳", ingredients:["קמח","ביצים","חלב","אבקת אפייה","סוכר"],
+   steps:["מערבבים קמח, אבקת אפייה וסוכר בקערה","מוסיפים ביצים וחלב ומקציפים לבלילה חלקה","אופים כפית בלילה בכל פעם על מחבת חמה עד בועות","הופכים ומטגנים עוד דקה"]},
+  {name:"אורז לבן פשוט", time:"20 דק׳", healthy:true, ingredients:["אורז","שמן זית","מלח"],
+   steps:["שוטפים את האורז במים קרים","מבשלים בסיר עם כמות מים כפולה ומעט מלח","מביאים לרתיחה, מנמיכים אש ומכסים","מבשלים כ-15 דקות עד שהמים נספגים"]},
+  {name:"סלט קוטג' וירקות", time:"8 דק׳", healthy:true, ingredients:["קוטג'","עגבניות","מלפפונים","בצל","מלח"],
+   steps:["קוצצים עגבניות, מלפפונים ובצל לקוביות קטנות","מערבבים עם הקוטג' בקערה","מתבלים במלח ומגישים קר"]},
+  {name:"שניצל עוף", time:"25 דק׳", ingredients:["עוף","קמח","ביצים","מלח","שמן זית"],
+   steps:["חותכים את החזה לפרוסות דקות","מעבירים בקמח, ואז בביצה טרופה","מטגנים בשמן חם משני הצדדים עד השחמה ובישול מלא"]},
+  {name:"טופו מוקפץ ברוטב סויה", time:"18 דק׳", healthy:true, ingredients:["טופו","בצל","גזר","רוטב סויה","שמן זית"],
+   steps:["חותכים טופו לקוביות ומטגנים עד השחמה קלה","מוציאים לצד ומטגנים בצל וגזר באותה מחבת","מחזירים את הטופו ומוסיפים רוטב סויה","מקפיצים הכל יחד כדקה ומגישים"]},
+  {name:"מרק בצל", time:"45 דק׳", ingredients:["בצל","שום","קמח","מלח","שמן זית"],
+   steps:["פורסים בצל דק ומטגנים על אש נמוכה כ-25 דקות עד שמזהיב מאוד","מפזרים מעט קמח ומערבבים דקה","מוסיפים מים ומבשלים עוד 15 דקות","מתבלים במלח ומגישים חם"]},
+  {name:"ביצה קשה וסלט", time:"15 דק׳", healthy:true, ingredients:["ביצים","עגבניות","מלפפונים","מלח","שמן זית"],
+   steps:["מבשלים ביצים במים רותחים כ-10 דקות ומצננים במים קרים","קוצצים עגבניות ומלפפונים לסלט ומתבלים בשמן זית ומלח","קולפים את הביצים וחותכים לפלחים, מגישים לצד הסלט"]},
+  {name:"סלט קינואה עם ירקות", time:"20 דק׳", healthy:true, ingredients:["קינואה","עגבניות","מלפפונים","שמן זית","מלח"],
+   steps:["מבשלים קינואה במים לפי ההוראות על האריזה ומצננים","קוצצים עגבניות ומלפפונים לקוביות קטנות","מערבבים הכל בקערה עם שמן זית ומלח"]},
+  {name:"פסטה שום ושמן זית", time:"15 דק׳", healthy:true, ingredients:["פסטה","שום","שמן זית","מלח"],
+   steps:["מבשלים פסטה במים רותחים ומלוחים","מחממים שמן זית במחבת ומטגנים שום פרוס דק עד שמזהיב קלות בלי להישרף","מערבבים פנימה את הפסטה המסוננת עם מעט ממי הבישול","מתבלים במלח ומגישים מיד"]},
+  {name:"טוסט קוטג' ועגבניה", time:"5 דק׳", healthy:true, ingredients:["לחם","קוטג'","עגבניות","מלח"],
+   steps:["קולים את פרוסת הלחם","מורחים קוטג' ומניחים פרוסות עגבנייה מעל","מתבלים במעט מלח ומגישים"]},
+  {name:"סלט כרוב", time:"10 דק׳", healthy:true, ingredients:["כרוב","גזר","שמן זית","מלח","חומץ"],
+   steps:["פורסים כרוב דק ומגררים גזר","מערבבים בקערה עם שמן זית, חומץ ומלח","טוב יותר אחרי כמה דקות מנוחה שהכרוב מתרכך מעט"]},
+  {name:"פיתה עם עגבניות וגבינה", time:"10 דק׳", ingredients:["פיתות","עגבניות","גבינה צהובה","שמן זית"],
+   steps:["פותחים פיתה ומניחים על תבנית או מחבת","מפזרים עגבניות קצוצות וגבינה מגורדת","מחממים עד שהגבינה נמסה ומקפלים לשניים"]},
+  {name:"שייק בננה וחלב", time:"5 דק׳", healthy:true, ingredients:["בננה","חלב","דבש"],
+   steps:["חותכים בננה לפרוסות","טוחנים בבלנדר עם חלב ומעט דבש עד למרקם חלק","מגישים קר מיד"]},
+  {name:"סלט תפוח ולימון", time:"8 דק׳", healthy:true, ingredients:["תפוח","לימון","דבש"],
+   steps:["חותכים תפוח לקוביות דקות","מערבבים עם מיץ לימון סחוט טרי כדי שלא יתחמצן","מוסיפים מעט דבש ומערבבים"]},
+  {name:"עוף בתנור עם לימון ושום", time:"45 דק׳", healthy:true, ingredients:["עוף","לימון","שום","שמן זית","מלח"],
+   steps:["מניחים את העוף בתבנית ומתבלים בשמן זית, שום כתוש ומלח","סוחטים מיץ לימון מעל ומניחים כמה פלחים בתבנית","אופים בתנור שחומם מראש ל-200 מעלות כ-40 דקות עד שהעוף שחום ועסיסי"]},
+  {name:"מרק כרוב וירקות", time:"40 דק׳", healthy:true, ingredients:["כרוב","גזר","בצל","שום","מלח"],
+   steps:["מטגנים בצל ושום בסיר עד השחמה קלה","מוסיפים כרוב פרוס וגזר חתוך ומכסים במים","מבשלים כ-30 דקות עד שהירקות רכים","מתבלים במלח ומגישים חם"]},
+  {name:"חביתיות קישואים ותפוחי אדמה", time:"25 דק׳", ingredients:["קישואים","תפוחי אדמה","ביצים","קמח","מלח","שמן זית"],
+   steps:["מגררים קישואים ותפוחי אדמה וסוחטים היטב מנוזלים","מערבבים עם ביצים, קמח ומלח לתערובת אחידה","מטגנים כפות מהתערובת במחבת שמנה עד השחמה משני הצדדים"]},
+  {name:"סלט מלפפון וקוטג' עם לימון", time:"6 דק׳", healthy:true, ingredients:["מלפפונים","קוטג'","לימון","מלח"],
+   steps:["קוצצים מלפפונים לקוביות קטנות","מערבבים עם קוטג', סחיטת לימון ומלח","מגישים קר"]},
+  {name:"מרק גזר קטיפה", time:"35 דק׳", healthy:true, ingredients:["גזר","בצל","שמנת מתוקה","מלח","שמן זית"],
+   steps:["מטגנים בצל בשמן זית עד שמתרכך","מוסיפים גזר חתוך ומכסים במים","מבשלים כ-25 דקות עד שהגזר רך, טוחנים חלק","מוסיפים שמנת מתוקה ומלח ומחממים בעדינות לפני ההגשה"]},
+  {name:"אפונה וכרוב מאודים", time:"30 דק׳", healthy:true, ingredients:["אפונה קפואה","כרוב","בצל","שמן זית","מלח","פלפל שחור"],
+   steps:["פורסים בצל דק ומטגנים בשמן זית עד שמזהיב","מוסיפים כרוב פרוס לרצועות דקות ומאדים עד שיורד בנפחו","מוסיפים אפונה ומתבלים במלח ופלפל","מבשלים כ-15 דקות נוספות על אש נמוכה עד שהכל רך"]},
+  {name:"פשטידת ברוקולי עתירת חלבון", time:"45 דק׳", healthy:true, ingredients:["ביצים","קוטג'","קמח","טחינה","ברוקולי","מלח","פלפל שחור"],
+   steps:["מחממים תנור ל-180 מעלות","חולטים את הברוקולי כמה דקות במים רותחים ומסננים היטב מנוזלים","טורפים ביצים בקערה ומוסיפים קוטג', טחינה, קמח, מלח ופלפל","מקפלים פנימה את הברוקולי בעדינות","יוצקים לתבנית אפייה ואופים כ-35 דקות עד שיציב וזהוב"]},
+  {name:"קוביות טופו ברוטב חמאת בוטנים", time:"15 דק׳", healthy:true, ingredients:["טופו","שמן זית","רוטב סויה","חמאת בוטנים","מלח"],
+   steps:["מייבשים את הטופו בנייר סופג וחותכים לקוביות אחידות","מחממים שמן זית במחבת וצורבים את הקוביות מכל הצדדים","מערבבים בקערית חמאת בוטנים, רוטב סויה ומעט מים חמים לרוטב חלק","יוצקים את הרוטב על הטופו במחבת ומבשלים עוד 2-3 דקות תוך ערבוב"]},
+  {name:"סלט ענבים ומוצרלה", time:"10 דק׳", healthy:true, ingredients:["ענבים","מוצרלה","עגבניות","שמן זית","מלח"],
+   steps:["חוצים ענבים ועגבניות שרי (או עגבנייה רגילה חתוכה לקוביות)","מערבבים בקערה עם כדורי מוצרלה קטנים ושמן זית","מתבלים במעט מלח ומגישים קר"]}
+];
+
+// normalize helper for free-text matching
+function norm(s){ return s.trim().replace(/\s+/g,' '); }
+
+const MEAT_INGREDIENTS = ["עוף","בשר טחון","טונה"];
+function isVegetarian(r){ return !r.ingredients.some(i=>MEAT_INGREDIENTS.includes(i)); }
+function minutesOf(r){ const m = r.time.match(/\d+/); return m? parseInt(m[0]) : 999; }
+
+let fridge = new Set(JSON.parse(localStorage.getItem('fridge_items')||'[]'));
+let cookedSet = new Set(JSON.parse(localStorage.getItem('cooked_recipes')||'[]'));
+let shoppingList = new Set(JSON.parse(localStorage.getItem('shopping_list')||'[]'));
+let filters = { search:'', diet:'all', maxTime:0, almostReady:false, hideCooked:false };
+
+function saveFridge(){
+  localStorage.setItem('fridge_items', JSON.stringify([...fridge]));
+}
+function saveCooked(){
+  localStorage.setItem('cooked_recipes', JSON.stringify([...cookedSet]));
+}
+function saveShoppingList(){
+  localStorage.setItem('shopping_list', JSON.stringify([...shoppingList]));
+}
+
+let fridgeExpanded = false;
+
+function renderFridgeStrip(){
+  const wrap = document.getElementById('fridgeSummaryWrap');
+  if(fridge.size === 0){
+    wrap.innerHTML = '<div class="fridge-empty">המקרר עדיין ריק — התחילו לסמן למטה</div>';
+    return;
+  }
+  wrap.innerHTML = `
+    <div class="fridge-summary">
+      <span class="fridge-count">יש לכם <b>${fridge.size}</b> מצרכים</span>
+      <div class="fridge-actions">
+        <button id="toggleFridgeBtn">${fridgeExpanded?'הסתר':'הצג'}</button>
+        <button class="clear-btn" id="clearFridgeBtn">נקה הכל</button>
+      </div>
+    </div>
+    <div class="fridge-panel${fridgeExpanded?' open':''}" id="fridgePanel">
+      <div class="fridge-panel-inner" id="fridgePanelInner"></div>
+    </div>
+  `;
+  const inner = document.getElementById('fridgePanelInner');
+  [...fridge].forEach(item=>{
+    const chip = document.createElement('span');
+    chip.className='chip';
+    chip.innerHTML = `${item} <button aria-label="הסרה">×</button>`;
+    chip.querySelector('button').onclick = ()=>{
+      fridge.delete(item);
+      saveFridge();
+      renderAll();
+    };
+    inner.appendChild(chip);
+  });
+  document.getElementById('toggleFridgeBtn').onclick = ()=>{
+    fridgeExpanded = !fridgeExpanded;
+    renderFridgeStrip();
+  };
+  document.getElementById('clearFridgeBtn').onclick = ()=>{
+    fridge.clear();
+    saveFridge();
+    renderAll();
+  };
+}
+
+let activeCat = Object.keys(CATALOG)[0];
+
+function renderCatTabs(){
+  const el = document.getElementById('catTabs');
+  el.innerHTML='';
+  Object.keys(CATALOG).forEach(cat=>{
+    const b = document.createElement('button');
+    b.className = 'cat-tab' + (cat===activeCat?' active':'');
+    b.textContent = cat;
+    b.onclick = ()=>{ activeCat = cat; renderCatTabs(); renderItemGrid(); };
+    el.appendChild(b);
+  });
+}
+
+function renderItemGrid(){
+  const el = document.getElementById('itemGrid');
+  el.innerHTML='';
+  CATALOG[activeCat].forEach(item=>{
+    const b = document.createElement('button');
+    b.className = 'item-btn' + (fridge.has(item)?' selected':'');
+    b.textContent = item;
+    b.onclick = ()=>{
+      if(fridge.has(item)) fridge.delete(item); else fridge.add(item);
+      saveFridge();
+      renderAll();
+    };
+    el.appendChild(b);
+  });
+}
+
+function wireCardActions(card, r, missing){
+  const cookBtn = card.querySelector('.cook-btn');
+  if(cookBtn){
+    cookBtn.onclick = (e)=>{
+      e.stopPropagation();
+      if(cookedSet.has(r.name)) cookedSet.delete(r.name); else cookedSet.add(r.name);
+      saveCooked();
+      renderAll();
+    };
+  }
+  const shopBtn = card.querySelector('.shop-btn');
+  if(shopBtn){
+    shopBtn.onclick = (e)=>{
+      e.stopPropagation();
+      missing.forEach(i=>shoppingList.add(i));
+      saveShoppingList();
+      renderAll();
+    };
+  }
+}
+
+function cardActionsHTML(r, missing){
+  const cooked = cookedSet.has(r.name);
+  return `
+    <div class="card-actions">
+      <button class="action-btn cook-btn ${cooked?'cooked':''}">${cooked? '✓ בישלתם — לבטל סימון' : 'סמנו שבישלתם'}</button>
+      ${missing.length>0 ? `<button class="action-btn shop-btn">➕ הוסיפו ${missing.length} חסרים לרשימת קניות</button>` : ''}
+    </div>
+  `;
+}
+
+function renderFilterRow(){
+  const el = document.getElementById('filterRow');
+  el.innerHTML = `
+    <button class="filter-chip ${filters.diet==='veg'?'active':''}" id="vegChip">🌱 צמחוני בלבד</button>
+    <button class="filter-chip ${filters.diet==='nonveg'?'active':''}" id="nonvegChip">🍗 עם בשר/עוף/דגים</button>
+    <select class="time-select" id="timeSelect">
+      <option value="0">כל זמן הכנה</option>
+      <option value="15">עד 15 דק׳</option>
+      <option value="30">עד 30 דק׳</option>
+      <option value="45">עד 45 דק׳</option>
+    </select>
+    <button class="filter-chip ${filters.almostReady?'active':''}" id="almostChip">כמעט מוכן (חסר מצרך אחד)</button>
+    <button class="filter-chip ${filters.hideCooked?'active':''}" id="hideCookedChip">הסתירו מה שכבר בישלתי</button>
+  `;
+  document.getElementById('timeSelect').value = String(filters.maxTime);
+  document.getElementById('vegChip').onclick = ()=>{
+    filters.diet = filters.diet==='veg' ? 'all' : 'veg';
+    renderFilterRow(); renderRecipes();
+  };
+  document.getElementById('nonvegChip').onclick = ()=>{
+    filters.diet = filters.diet==='nonveg' ? 'all' : 'nonveg';
+    renderFilterRow(); renderRecipes();
+  };
+  document.getElementById('timeSelect').onchange = (e)=>{
+    filters.maxTime = parseInt(e.target.value);
+    renderRecipes();
+  };
+  document.getElementById('almostChip').onclick = ()=>{
+    filters.almostReady = !filters.almostReady;
+    renderFilterRow(); renderRecipes();
+  };
+  document.getElementById('hideCookedChip').onclick = ()=>{
+    filters.hideCooked = !filters.hideCooked;
+    renderFilterRow(); renderRecipes();
+  };
+}
+
+function renderRecipes(){
+  const el = document.getElementById('recipeResults');
+  const searching = filters.search.trim().length>0;
+
+  if(fridge.size===0 && !searching){
+    el.innerHTML = '<p class="empty-state">ברגע שיהיה משהו במקרר, כאן יופיעו הצעות למתכונים — מהקרוב ביותר למה שיש, ועד לרחוקים יותר.</p>';
+    return;
+  }
+
+  let list = RECIPES.map(r=>{
+    const have = r.ingredients.filter(i=>fridge.has(i));
+    const missing = r.ingredients.filter(i=>!fridge.has(i));
+    return {...r, haveCount: have.length, total: r.ingredients.length, have, missing};
+  });
+
+  if(searching){
+    const q = filters.search.trim();
+    list = list.filter(r=>r.name.includes(q));
+  } else {
+    list = list.filter(r=>r.haveCount>0);
+  }
+
+  if(filters.diet==='veg') list = list.filter(isVegetarian);
+  if(filters.diet==='nonveg') list = list.filter(r=>!isVegetarian(r));
+  if(filters.maxTime>0) list = list.filter(r=>minutesOf(r)<=filters.maxTime);
+  if(filters.almostReady) list = list.filter(r=>r.haveCount>0 && r.missing.length<=1);
+  if(filters.hideCooked) list = list.filter(r=>!cookedSet.has(r.name));
+
+  if(fridge.size>0){
+    list.sort((a,b)=> (b.haveCount/b.total) - (a.haveCount/a.total) || b.haveCount - a.haveCount);
+  } else {
+    list.sort((a,b)=> a.name.localeCompare(b.name,'he'));
+  }
+
+  if(list.length===0){
+    el.innerHTML = '<p class="empty-state">לא נמצאו מתכונים לפי הסינון שבחרתם — נסו לרכך אחד הפילטרים.</p>';
+    return;
+  }
+
+  el.innerHTML='';
+  list.forEach(r=>{
+    const card = document.createElement('div');
+    card.className='recipe-card';
+    const isFull = r.total>0 && r.missing.length===0;
+    const cooked = cookedSet.has(r.name);
+    card.innerHTML = `
+      <div class="recipe-head">
+        <h3>${r.name}</h3>
+        ${fridge.size>0 ? `<span class="match-frac ${isFull?'match-full':'match-partial'}">${r.haveCount}/${r.total} מצרכים</span>` : ''}
+      </div>
+      <div class="recipe-meta">${r.time}${isFull? ' · יש לכם הכל' : ''}${cooked? ' · <span class="cooked-badge">✓ בישלתם</span>' : ''}</div>
+      ${!isFull && r.missing.length>0 ? `<div class="missing-line">חסר: ${r.missing.join(', ')}</div>` : ''}
+      <div class="recipe-body">
+        <h4>מצרכים</h4>
+        <div class="ing-list">
+          ${r.ingredients.map(i=>`<span class="ing-pill ${fridge.has(i)?'have':'miss'}">${i}</span>`).join('')}
+        </div>
+        <h4>הוראות הכנה</h4>
+        <ol class="steps">${r.steps.map(s=>`<li>${s}</li>`).join('')}</ol>
+        ${cardActionsHTML(r, r.missing)}
+      </div>
+    `;
+    card.onclick = ()=> card.classList.toggle('open');
+    wireCardActions(card, r, r.missing);
+    el.appendChild(card);
+  });
+}
+
+function dayOfYear(){
+  const d = new Date();
+  const start = new Date(d.getFullYear(),0,0);
+  return Math.floor((d - start)/86400000);
+}
+
+function renderDailyRecipe(){
+  const el = document.getElementById('dailyRecipe');
+  const pool = RECIPES.filter(r=>r.healthy);
+  const r = pool[dayOfYear() % pool.length];
+  const have = r.ingredients.filter(i=>fridge.has(i));
+  const missing = r.ingredients.filter(i=>!fridge.has(i));
+  const cooked = cookedSet.has(r.name);
+  const card = document.createElement('div');
+  card.className='daily-card recipe-card';
+  card.innerHTML = `
+    <div class="daily-label">המלצה טעימה ובריאה להיום</div>
+    <h3>${r.name}</h3>
+    <div class="recipe-meta">${r.time}${fridge.size? ` · ${have.length}/${r.ingredients.length} כבר יש לכם` : ''}${cooked? ' · <span class="cooked-badge">✓ בישלתם</span>' : ''}</div>
+    <div class="recipe-body">
+      <h4>מצרכים</h4>
+      <div class="ing-list">
+        ${r.ingredients.map(i=>`<span class="ing-pill ${fridge.has(i)?'have':'miss'}">${i}</span>`).join('')}
+      </div>
+      <h4>הוראות הכנה</h4>
+      <ol class="steps">${r.steps.map(s=>`<li>${s}</li>`).join('')}</ol>
+      ${cardActionsHTML(r, missing)}
+    </div>
+  `;
+  card.onclick = ()=> card.classList.toggle('open');
+  wireCardActions(card, r, missing);
+  el.innerHTML='';
+  el.appendChild(card);
+}
+
+function renderShoppingPanel(){
+  const el = document.getElementById('shoppingPanel');
+  if(shoppingList.size===0){
+    el.innerHTML = '<p class="shopping-empty">הוסיפו מצרכים חסרים ממתכון כדי להתחיל רשימת קניות</p>';
+    return;
+  }
+  el.innerHTML = `
+    <div class="shopping-list" id="shoppingListInner"></div>
+    <div class="shopping-buttons">
+      <button id="copyShoppingBtn">העתיקו רשימה</button>
+      <button class="secondary" id="clearShoppingBtn">נקו רשימה</button>
+    </div>
+  `;
+  const inner = document.getElementById('shoppingListInner');
+  [...shoppingList].forEach(item=>{
+    const chip = document.createElement('span');
+    chip.className='chip';
+    chip.innerHTML = `${item} <button aria-label="הסרה">×</button>`;
+    chip.querySelector('button').onclick = ()=>{
+      shoppingList.delete(item);
+      saveShoppingList();
+      renderShoppingPanel();
+    };
+    inner.appendChild(chip);
+  });
+  document.getElementById('copyShoppingBtn').onclick = ()=>{
+    const text = [...shoppingList].join('\n');
+    if(navigator.clipboard){ navigator.clipboard.writeText(text).catch(()=>{}); }
+  };
+  document.getElementById('clearShoppingBtn').onclick = ()=>{
+    shoppingList.clear();
+    saveShoppingList();
+    renderShoppingPanel();
+  };
+}
+
+function renderAll(){
+  renderFridgeStrip();
+  renderItemGrid();
+  renderFilterRow();
+  renderRecipes();
+  renderDailyRecipe();
+  renderShoppingPanel();
+}
+
+document.getElementById('customAddBtn').onclick = ()=>{
+  const input = document.getElementById('customInput');
+  const val = norm(input.value);
+  if(val){
+    fridge.add(val);
+    saveFridge();
+    input.value='';
+    renderAll();
+  }
+};
+document.getElementById('customInput').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter'){ document.getElementById('customAddBtn').click(); }
+});
+document.getElementById('searchInput').addEventListener('input', (e)=>{
+  filters.search = e.target.value;
+  renderRecipes();
+});
+
+renderCatTabs();
+renderAll();
+
+// --- minimal PWA registration (manifest + service worker via blob URLs) ---
+try{
+  const manifest = {
+    name: "מה יש במקרר?",
+    short_name: "במקרר",
+    start_url: ".",
+    display: "standalone",
+    background_color: "#F6F3EA",
+    theme_color: "#F6F3EA",
+    icons: []
+  };
+  const manifestBlob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+  const manifestURL = URL.createObjectURL(manifestBlob);
+  const link = document.createElement('link');
+  link.rel = 'manifest';
+  link.href = manifestURL;
+  document.head.appendChild(link);
+}catch(e){ /* manifest not critical */ }
+</script>
+</body>
+</html>
