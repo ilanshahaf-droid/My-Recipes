@@ -1540,6 +1540,8 @@ let favorites = new Set(JSON.parse(localStorage.getItem('favorites')||'[]'));
 let filters = { search:'', diet:'all', maxTime:0, almostReady:false, hideCooked:false, favoritesOnly:false, cuisine:'all', difficulty:'all' };
 let isDark = localStorage.getItem('theme') === 'dark';
 let showCheckedShop = false;
+const SUPABASE_URL = 'https://pznpibrlcbjpcoxagxns.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6bnBpYnJsY2JqcGNveGFneG5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5NjEzMjUsImV4cCI6MjEwMjUzNzMyNX0.dvfKlGyI1U_E7G5POQJkLn28gky7cTyJbQqT3Mie_YU';
 let syncCode = localStorage.getItem('sync_code') || null;
 let ranOutMode = false;
 const WEEK_DAYS = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
@@ -1586,36 +1588,45 @@ function saveShoppingList(){ localStorage.setItem('shopping_list', JSON.stringif
 function saveBought(){ localStorage.setItem('bought_items', JSON.stringify([...boughtItems])); pushSync(); }
 function saveFavorites(){ localStorage.setItem('favorites', JSON.stringify([...favorites])); }
 
-// ——— Cross-device shopping list sync (via jsonblob.com, no account needed) ———
+// ——— Cross-device shopping list sync (via your Supabase project) ———
+function supaHeaders(extra){
+  return Object.assign({
+    'apikey': SUPABASE_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_KEY,
+    'Content-Type': 'application/json'
+  }, extra||{});
+}
 async function createSyncBucket(){
-  const res = await fetch('https://jsonblob.com/api/jsonBlob', {
+  const code = Math.random().toString(36).slice(2,8).toUpperCase();
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/shopping_sync`, {
     method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({items:[], bought:[], ts:Date.now()})
+    headers: supaHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
+    body: JSON.stringify([{code, items:[], bought:[], updated_at:new Date().toISOString()}])
   });
   if(!res.ok) throw new Error('create failed: ' + res.status);
-  const location = res.headers.get('Location') || res.headers.get('location');
-  if(!location) throw new Error('no location header returned');
-  return location.split('/').pop();
+  return code;
 }
 async function pushSync(){
   if(!syncCode) return;
   try{
-    await fetch(`https://jsonblob.com/api/jsonBlob/${syncCode}`, {
-      method:'PUT',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({items:[...shoppingList], bought:[...boughtItems], ts:Date.now()})
+    await fetch(`${SUPABASE_URL}/rest/v1/shopping_sync?on_conflict=code`, {
+      method:'POST',
+      headers: supaHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
+      body: JSON.stringify([{code:syncCode, items:[...shoppingList], bought:[...boughtItems], updated_at:new Date().toISOString()}])
     });
   }catch(e){ /* offline, or sync service unreachable — will retry on next change */ }
 }
 async function pullSync(){
   if(!syncCode) return;
   try{
-    const res = await fetch(`https://jsonblob.com/api/jsonBlob/${syncCode}`);
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/shopping_sync?code=eq.${syncCode}&select=items,bought`, {
+      headers: supaHeaders()
+    });
     if(!res.ok) return;
-    const data = await res.json();
-    shoppingList = new Set(data.items||[]);
-    boughtItems = new Set(data.bought||[]);
+    const rows = await res.json();
+    if(!rows.length) return;
+    shoppingList = new Set(rows[0].items||[]);
+    boughtItems = new Set(rows[0].bought||[]);
     localStorage.setItem('shopping_list', JSON.stringify([...shoppingList]));
     localStorage.setItem('bought_items', JSON.stringify([...boughtItems]));
     renderShoppingPanel();
@@ -1655,14 +1666,28 @@ function wireSyncBox(){
       syncCode = code;
       localStorage.setItem('sync_code', code);
       await pushSync();
-    }catch(e){ alert('לא הצלחנו ליצור סנכרון כרגע (' + e.message + '). ודאו חיבור לאינטרנט ונסו שוב.'); }
+    }catch(e){ alert('לא הצלחנו ליצור סנכרון כרגע (' + e.message + '). ודאו חיבור לאינטרנט ונסו שוב, או השתמשו בינתיים ב"קוד שיתוף" הידני למטה.'); }
     renderShoppingPanel();
   };
   const joinBtn = document.getElementById('syncJoinBtn');
   if(joinBtn) joinBtn.onclick = async ()=>{
     const input = document.getElementById('syncJoinInput');
-    const code = norm(input.value);
+    const code = norm(input.value).toUpperCase();
     if(!code) return;
+    joinBtn.disabled = true; joinBtn.textContent = 'בודק...';
+    try{
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/shopping_sync?code=eq.${code}&select=code`, {headers: supaHeaders()});
+      const rows = await res.json();
+      if(!res.ok || rows.length===0){
+        alert('קוד לא נמצא. ודאו שהעתקתם אותו נכון מהמכשיר השני.');
+        joinBtn.disabled = false; joinBtn.textContent = 'הצטרפו';
+        return;
+      }
+    }catch(e){
+      alert('שגיאה בבדיקת הקוד. ודאו חיבור לאינטרנט ונסו שוב.');
+      joinBtn.disabled = false; joinBtn.textContent = 'הצטרפו';
+      return;
+    }
     syncCode = code;
     localStorage.setItem('sync_code', code);
     await pullSync();
