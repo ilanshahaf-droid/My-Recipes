@@ -872,6 +872,156 @@
     margin-top:6px;
     min-height:16px;
   }
+  .autocomplete-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-top:8px;
+  }
+  .autocomplete-row:empty{
+    margin-top:0;
+  }
+  .ac-chip{
+    border:1px solid var(--line);
+    background:var(--surface);
+    color:var(--ink);
+    padding:5px 12px;
+    border-radius:100px;
+    font-size:13px;
+    cursor:pointer;
+    font-family:'Assistant',sans-serif;
+  }
+
+  .section-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:12px;
+  }
+  .ranout-toggle{
+    border:1px solid var(--line);
+    background:var(--surface);
+    color:var(--ink-soft);
+    padding:6px 12px;
+    border-radius:100px;
+    font-size:12.5px;
+    font-weight:600;
+    cursor:pointer;
+    font-family:'Assistant',sans-serif;
+  }
+  .ranout-toggle.active{
+    background:var(--brick);
+    border-color:var(--brick);
+    color:#fff;
+  }
+  .ranout-banner{
+    background:var(--brick-soft);
+    color:var(--brick);
+    border-radius:12px;
+    padding:10px 14px;
+    font-size:13px;
+    font-weight:600;
+    margin-bottom:12px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .ranout-banner button{
+    border:none;
+    background:var(--brick);
+    color:#fff;
+    padding:5px 12px;
+    border-radius:8px;
+    font-size:12px;
+    font-weight:700;
+    cursor:pointer;
+    white-space:nowrap;
+    font-family:'Assistant',sans-serif;
+  }
+
+  .week-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:8px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .week-row:last-of-type{border-bottom:none;}
+  .week-day{
+    font-weight:700;
+    font-size:13.5px;
+    width:52px;
+    flex:none;
+  }
+  .week-select{
+    flex:1;
+    padding:7px 8px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    font-family:'Assistant',sans-serif;
+    font-size:13px;
+    background:var(--surface);
+    color:var(--ink);
+  }
+  .week-actions{
+    margin-top:14px;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .week-actions button{
+    border:none;
+    background:var(--ink);
+    color:var(--paper);
+    padding:9px 14px;
+    border-radius:10px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    font-family:'Assistant',sans-serif;
+  }
+  .week-actions button.secondary{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--ink-soft);
+  }
+
+  .barcode-overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:#000;
+    z-index:100;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+  }
+  .barcode-overlay.active{display:flex;}
+  .barcode-overlay video{
+    width:100%;
+    max-width:480px;
+    border-radius:12px;
+  }
+  .barcode-hint{
+    color:#fff;
+    font-size:14px;
+    margin-top:14px;
+    text-align:center;
+    padding:0 20px;
+  }
+  .barcode-close{
+    margin-top:16px;
+    border:none;
+    background:var(--brick);
+    color:#fff;
+    padding:10px 22px;
+    border-radius:100px;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+    font-family:'Assistant',sans-serif;
+  }
 </style>
 </head>
 <body>
@@ -892,11 +1042,19 @@
       <div id="fridgeSummaryWrap"></div>
     </section>
     <section>
-      <h2>הוספה מהירה</h2>
+      <div class="section-head">
+        <h2 style="margin:0;">הוספה מהירה</h2>
+        <button class="ranout-toggle" id="ranoutToggleBtn">מה נגמר?</button>
+      </div>
+      <div class="ranout-banner" id="ranoutBanner" style="display:none;">
+        מצב "מה נגמר" פעיל — לחיצה על מצרך תעביר אותו לרשימת הקניות ותסיר מהמקרר
+        <button id="ranoutExitBtn">סיום</button>
+      </div>
       <div class="add-row">
         <input type="text" id="customInput" placeholder="הקלידו מצרך והוסיפו...">
         <button id="customAddBtn">הוספה</button>
       </div>
+      <div class="autocomplete-row" id="fridgeAutocomplete"></div>
       <div class="cam-status" id="camStatus"></div>
       <div class="cat-tabs" id="catTabs"></div>
       <div class="item-grid" id="itemGrid"></div>
@@ -905,6 +1063,13 @@
 
   <div class="tab-content" id="tab-recipes">
     <section style="margin-top:16px;">
+      <div class="section-head">
+        <h2 style="margin:0;">תוכנית שבועית</h2>
+        <button class="ranout-toggle" id="weekToggleBtn">▾</button>
+      </div>
+      <div id="weekPlan" style="display:none;"></div>
+    </section>
+    <section>
       <h2>מתכון היום</h2>
       <div id="dailyRecipe"></div>
     </section>
@@ -948,6 +1113,12 @@
 </nav>
 
 <!-- Cooking mode overlay -->
+<div class="barcode-overlay" id="barcodeOverlay">
+  <video id="barcodeVideo" autoplay playsinline muted></video>
+  <div class="barcode-hint" id="barcodeHint">כוונו את המצלמה לברקוד המוצר</div>
+  <button class="barcode-close" id="barcodeCloseBtn">ביטול</button>
+</div>
+
 <div class="cook-overlay" id="cookOverlay">
   <div class="cook-header">
     <h2 id="cookTitle"></h2>
@@ -1222,6 +1393,40 @@ let filters = { search:'', diet:'all', maxTime:0, almostReady:false, hideCooked:
 let isDark = localStorage.getItem('theme') === 'dark';
 let showCheckedShop = false;
 let syncCode = localStorage.getItem('sync_code') || null;
+let ranOutMode = false;
+const WEEK_DAYS = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+let weeklyPlan = JSON.parse(localStorage.getItem('weekly_plan')||'{}');
+let weekOpen = localStorage.getItem('week_open') === '1';
+let itemUsage = JSON.parse(localStorage.getItem('item_usage')||'{}');
+
+function recordUsage(name){
+  itemUsage[name] = (itemUsage[name]||0) + 1;
+  localStorage.setItem('item_usage', JSON.stringify(itemUsage));
+}
+function getAllKnownItems(){
+  const map = new Map();
+  Object.values(CATALOG).flat().forEach(i=>{ if(!map.has(i)) map.set(i, 0); });
+  Object.keys(itemUsage).forEach(i=> map.set(i, itemUsage[i]));
+  return [...map.entries()].map(([name,freq])=>({name,freq}));
+}
+function getSuggestions(query){
+  const q = norm(query);
+  if(!q) return [];
+  return getAllKnownItems()
+    .filter(it=> it.name.startsWith(q) && it.name !== q)
+    .sort((a,b)=> b.freq - a.freq || a.name.localeCompare(b.name,'he'))
+    .slice(0,6);
+}
+function renderAutocomplete(containerId, query, onPick){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  const sugg = getSuggestions(query);
+  if(sugg.length===0){ el.innerHTML=''; return; }
+  el.innerHTML = sugg.map(s=>`<button type="button" class="ac-chip" data-name="${s.name}">${s.name}</button>`).join('');
+  el.querySelectorAll('.ac-chip').forEach(chip=>{
+    chip.onclick = ()=> onPick(chip.dataset.name);
+  });
+}
 
 function saveFridge(){ localStorage.setItem('fridge_items', JSON.stringify([...fridge])); }
 function saveCooked(){ localStorage.setItem('cooked_recipes', JSON.stringify([...cookedSet])); }
@@ -1371,8 +1576,18 @@ function renderFridgeStrip(){
     chip.className='chip';
     chip.innerHTML = `${item} <button aria-label="הסרה">×</button>`;
     chip.querySelector('button').onclick = ()=>{
-      fridge.delete(item);
-      saveFridge();
+      if(ranOutMode){
+        fridge.delete(item);
+        shoppingList.add(item);
+        boughtItems.delete(item);
+        recordUsage(item);
+        saveFridge();
+        saveShoppingList();
+        saveBought();
+      } else {
+        fridge.delete(item);
+        saveFridge();
+      }
       renderAll();
     };
     inner.appendChild(chip);
@@ -1410,12 +1625,30 @@ function renderItemGrid(){
     b.className = 'item-btn' + (fridge.has(item)?' selected':'');
     b.textContent = item;
     b.onclick = ()=>{
-      if(fridge.has(item)) fridge.delete(item); else fridge.add(item);
-      saveFridge();
+      if(ranOutMode){
+        if(fridge.has(item)) fridge.delete(item);
+        shoppingList.add(item);
+        boughtItems.delete(item);
+        recordUsage(item);
+        saveFridge();
+        saveShoppingList();
+        saveBought();
+      } else {
+        if(fridge.has(item)) fridge.delete(item); else fridge.add(item);
+        saveFridge();
+      }
       renderAll();
     };
     el.appendChild(b);
   });
+}
+
+function renderRanoutUI(){
+  const btn = document.getElementById('ranoutToggleBtn');
+  const banner = document.getElementById('ranoutBanner');
+  if(!btn || !banner) return;
+  btn.classList.toggle('active', ranOutMode);
+  banner.style.display = ranOutMode ? 'flex' : 'none';
 }
 
 function wireCardActions(card, r, missing){
@@ -1696,6 +1929,70 @@ function dayOfYear(){
   return Math.floor((d - start)/86400000);
 }
 
+function renderWeekPlan(){
+  const btn = document.getElementById('weekToggleBtn');
+  const panel = document.getElementById('weekPlan');
+  if(!panel) return;
+  panel.style.display = weekOpen ? 'block' : 'none';
+  if(btn) btn.textContent = weekOpen ? '▴' : '▾';
+  if(!weekOpen) return;
+
+  const options = RECIPES.map(r=>r.name).sort((a,b)=>a.localeCompare(b,'he'));
+  let html = '';
+  WEEK_DAYS.forEach(day=>{
+    const selected = weeklyPlan[day] || '';
+    html += `
+      <div class="week-row">
+        <span class="week-day">יום ${day}</span>
+        <select class="week-select" data-day="${day}">
+          <option value="">— לא נבחר —</option>
+          ${options.map(name=>`<option value="${name}" ${name===selected?'selected':''}>${name}</option>`).join('')}
+        </select>
+      </div>`;
+  });
+  html += `
+    <div class="week-actions">
+      <button id="weekShopBtn">🛒 הוסיפו את כל החוסר לרשימת קניות</button>
+      <button class="secondary" id="weekClearBtn">נקו תוכנית</button>
+    </div>`;
+  panel.innerHTML = html;
+
+  panel.querySelectorAll('.week-select').forEach(sel=>{
+    sel.onchange = (e)=>{
+      const day = e.target.dataset.day;
+      const val = e.target.value;
+      if(val) weeklyPlan[day] = val; else delete weeklyPlan[day];
+      localStorage.setItem('weekly_plan', JSON.stringify(weeklyPlan));
+    };
+  });
+  document.getElementById('weekShopBtn').onclick = ()=>{
+    const chosen = Object.values(weeklyPlan).filter(Boolean);
+    if(chosen.length===0){ alert('בחרו קודם מתכונים לימי השבוע'); return; }
+    let addedCount = 0;
+    chosen.forEach(name=>{
+      const r = RECIPES.find(rc=>rc.name===name);
+      if(!r) return;
+      r.ingredients.forEach(ing=>{
+        if(!fridge.has(ing) && !shoppingList.has(ing)){
+          shoppingList.add(ing);
+          boughtItems.delete(ing);
+          addedCount++;
+        }
+      });
+    });
+    saveShoppingList();
+    saveBought();
+    renderAll();
+    alert(addedCount>0 ? `נוספו ${addedCount} מצרכים לרשימת הקניות` : 'הכל כבר יש לכם או כבר ברשימה');
+  };
+  document.getElementById('weekClearBtn').onclick = ()=>{
+    if(!confirm('לנקות את כל תוכנית השבוע?')) return;
+    weeklyPlan = {};
+    localStorage.setItem('weekly_plan', JSON.stringify(weeklyPlan));
+    renderWeekPlan();
+  };
+}
+
 function renderDailyRecipe(){
   const el = document.getElementById('dailyRecipe');
   const pool = RECIPES.filter(r=>r.healthy);
@@ -1741,6 +2038,7 @@ function renderShoppingPanel(){
       <button class="icon-btn" id="shopVoiceBtn" title="דיבור">🎤</button>
       <button id="shopAddBtn">הוספה</button>
     </div>
+    <div class="autocomplete-row" id="shopAutocomplete"></div>
   `;
 
   if(shoppingList.size===0){
@@ -1885,16 +2183,26 @@ function wireShopToolbar(){
     if(val){
       shoppingList.add(val);
       boughtItems.delete(val);
+      recordUsage(val);
       saveShoppingList();
       saveBought();
       input.value = '';
+      document.getElementById('shopAutocomplete').innerHTML = '';
       renderShoppingPanel();
     }
   };
   const btn = document.getElementById('shopAddBtn');
   if(btn) btn.onclick = add;
   const input = document.getElementById('shopAddInput');
-  if(input) input.addEventListener('keydown', e=>{ if(e.key==='Enter') add(); });
+  if(input){
+    input.addEventListener('keydown', e=>{ if(e.key==='Enter') add(); });
+    input.addEventListener('input', e=>{
+      renderAutocomplete('shopAutocomplete', e.target.value, (name)=>{
+        input.value = name;
+        add();
+      });
+    });
+  }
 
   const voiceBtn = document.getElementById('shopVoiceBtn');
   if(voiceBtn){
@@ -2057,6 +2365,8 @@ function renderAll(){
   renderDailyRecipe();
   renderShoppingPanel();
   renderTabBadges();
+  renderRanoutUI();
+  renderWeekPlan();
 }
 
 let activeTab = localStorage.getItem('active_tab') || 'fridge';
@@ -2097,13 +2407,27 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
 switchTab(activeTab);
 window.addEventListener('focus', ()=>{ if(activeTab === 'shopping') pullSync(); });
 
+document.getElementById('ranoutToggleBtn').onclick = ()=>{
+  ranOutMode = !ranOutMode;
+  renderRanoutUI();
+};
+document.getElementById('ranoutExitBtn').onclick = ()=>{
+  ranOutMode = false;
+  renderRanoutUI();
+};
+document.getElementById('weekToggleBtn').onclick = ()=>{
+  weekOpen = !weekOpen;
+  localStorage.setItem('week_open', weekOpen ? '1' : '0');
+  renderWeekPlan();
+};
+
 document.getElementById('themeBtn').onclick = ()=>{
   isDark = !isDark;
   saveTheme();
   applyTheme();
 };
 
-function startVoiceInput(onResult){
+function startVoiceInput(onResult, _isRetry){
   if(location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1'){
     alert('זיהוי קול דורש חיבור מאובטח (HTTPS). האתר צריך להיות מתארח בכתובת https (למשל דרך Netlify) — לא נפתח כקובץ מקומי במכשיר.');
     return;
@@ -2122,11 +2446,17 @@ function startVoiceInput(onResult){
     if(text) onResult(norm(text));
   };
   rec.onerror = (ev)=>{
+    if(ev.error === 'aborted' && !_isRetry){
+      // Can happen right after the mic permission prompt is granted — retry once silently
+      setTimeout(()=> startVoiceInput(onResult, true), 350);
+      return;
+    }
     const reasons = {
-      'not-allowed': 'הגישה למיקרופון נחסמה — אשרו הרשאת מיקרופון בהגדרות הדפדפן לאתר הזה.',
+      'not-allowed': 'הגישה למיקרופון נחסמה. בדקו בהגדרות האתר של הדפדפן (הסמל ליד שורת הכתובת) שהרשאת המיקרופון מאושרת, ושהמיקרופון לא מושתק ברמת המכשיר.',
       'no-speech': 'לא זוהה דיבור. נסו שוב וקצת יותר קרוב למיקרופון.',
       'audio-capture': 'לא נמצא מיקרופון זמין במכשיר.',
-      'network': 'בעיית רשת בזיהוי הדיבור. נסו שוב.'
+      'network': 'בעיית רשת בזיהוי הדיבור. ודאו חיבור לאינטרנט ונסו שוב.',
+      'aborted': 'זיהוי הדיבור נעצר באמצע. ודאו שהמיקרופון לא בשימוש על ידי אפליקציה אחרת ונסו שוב.'
     };
     alert(reasons[ev.error] || ('שגיאת זיהוי דיבור: ' + ev.error));
   };
@@ -2138,13 +2468,21 @@ document.getElementById('customAddBtn').onclick = ()=>{
   const val = norm(input.value);
   if(val){
     fridge.add(val);
+    recordUsage(val);
     saveFridge();
     input.value='';
+    document.getElementById('fridgeAutocomplete').innerHTML = '';
     renderAll();
   }
 };
 document.getElementById('customInput').addEventListener('keydown', (e)=>{
   if(e.key === 'Enter'){ document.getElementById('customAddBtn').click(); }
+});
+document.getElementById('customInput').addEventListener('input', (e)=>{
+  renderAutocomplete('fridgeAutocomplete', e.target.value, (name)=>{
+    document.getElementById('customInput').value = name;
+    document.getElementById('customAddBtn').click();
+  });
 });
 document.getElementById('searchInput').addEventListener('input', (e)=>{
   filters.search = e.target.value;
@@ -2273,10 +2611,103 @@ async function classifyAndAdd(file){
     classifyAndAdd(fileInput.files[0]);
     fileInput.value = '';
   };
+
+  const barcodeBtn = document.createElement('button');
+  barcodeBtn.type = 'button';
+  barcodeBtn.textContent = '🔖';
+  barcodeBtn.title = 'סריקת ברקוד';
+  barcodeBtn.style.cssText = 'border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:0 12px;font-size:18px;cursor:pointer;';
+  barcodeBtn.onclick = openBarcodeScanner;
+
   row.insertBefore(voiceBtn, row.lastElementChild);
   row.insertBefore(camBtn, row.lastElementChild);
+  row.insertBefore(barcodeBtn, row.lastElementChild);
   row.appendChild(fileInput);
 })();
+
+// ——— Barcode scanning (native BarcodeDetector, with ZXing fallback) ———
+let barcodeStream = null;
+let barcodeRAF = null;
+let zxingReader = null;
+
+function stopBarcodeScanner(){
+  const overlay = document.getElementById('barcodeOverlay');
+  overlay.classList.remove('active');
+  if(barcodeRAF){ cancelAnimationFrame(barcodeRAF); barcodeRAF = null; }
+  if(barcodeStream){ barcodeStream.getTracks().forEach(t=>t.stop()); barcodeStream = null; }
+  if(zxingReader){ try{ zxingReader.reset(); }catch(e){} zxingReader = null; }
+}
+
+async function lookupBarcode(code){
+  const hint = document.getElementById('barcodeHint');
+  hint.textContent = 'מחפשים את המוצר...';
+  try{
+    const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json`);
+    const data = await res.json();
+    if(data.status === 1 && data.product){
+      const name = data.product.product_name_he || data.product.product_name || data.product.generic_name || null;
+      if(name){
+        fridge.add(norm(name));
+        recordUsage(norm(name));
+        saveFridge();
+        renderAll();
+        stopBarcodeScanner();
+        return;
+      }
+    }
+    stopBarcodeScanner();
+    const manual = prompt(`לא מצאנו את המוצר במאגר (ברקוד ${code}). הקלידו את שם המוצר:`, '');
+    if(manual && norm(manual)){ fridge.add(norm(manual)); recordUsage(norm(manual)); saveFridge(); renderAll(); }
+  }catch(e){
+    stopBarcodeScanner();
+    const manual = prompt(`שגיאה בחיפוש המוצר (ברקוד ${code}). הקלידו את שם המוצר:`, '');
+    if(manual && norm(manual)){ fridge.add(norm(manual)); recordUsage(norm(manual)); saveFridge(); renderAll(); }
+  }
+}
+
+async function openBarcodeScanner(){
+  const overlay = document.getElementById('barcodeOverlay');
+  const video = document.getElementById('barcodeVideo');
+  const hint = document.getElementById('barcodeHint');
+  overlay.classList.add('active');
+  hint.textContent = 'כוונו את המצלמה לברקוד המוצר';
+  try{
+    barcodeStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+  }catch(e){
+    stopBarcodeScanner();
+    alert('לא ניתן לגשת למצלמה. ודאו שנתתם הרשאת מצלמה לאתר.');
+    return;
+  }
+  video.srcObject = barcodeStream;
+  await video.play();
+
+  if('BarcodeDetector' in window){
+    const detector = new window.BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128']});
+    const loop = async ()=>{
+      if(!barcodeStream) return;
+      try{
+        const codes = await detector.detect(video);
+        if(codes.length){ const val = codes[0].rawValue; lookupBarcode(val); return; }
+      }catch(e){}
+      barcodeRAF = requestAnimationFrame(loop);
+    };
+    loop();
+  } else {
+    hint.textContent = 'טוענים סורק ברקוד...';
+    try{
+      if(!window.ZXingBrowser) await loadScript('https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/index.min.js');
+      hint.textContent = 'כוונו את המצלמה לברקוד המוצר';
+      zxingReader = new window.ZXingBrowser.BrowserMultiFormatReader();
+      zxingReader.decodeFromVideoElement(video, (result, err)=>{
+        if(result){ lookupBarcode(result.getText()); }
+      });
+    }catch(e){
+      stopBarcodeScanner();
+      alert('לא הצלחנו לטעון את סורק הברקוד. בדקו חיבור לאינטרנט ונסו שוב.');
+    }
+  }
+}
+document.getElementById('barcodeCloseBtn').onclick = stopBarcodeScanner;
 
 applyTheme();
 renderCatTabs();
