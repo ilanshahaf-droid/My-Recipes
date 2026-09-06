@@ -38,7 +38,7 @@
     --star:#F0C14B;
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;}
+  html,body{margin:0;padding:0;width:100%;overflow-x:hidden;}
   body{
     background:var(--paper);
     color:var(--ink);
@@ -49,8 +49,9 @@
   }
   .wrap{
     max-width:640px;
+    width:100%;
     margin:0 auto;
-    padding:0 18px 100px;
+    padding:0 14px 100px;
   }
   header.top{
     position:sticky;
@@ -205,42 +206,48 @@
     display:flex;
     gap:6px;
     overflow-x:auto;
-    padding-bottom:4px;
-    margin-bottom:12px;
+    padding:6px;
+    margin-bottom:14px;
     scrollbar-width:none;
+    background:var(--line);
+    border-radius:14px;
   }
   .cat-tabs::-webkit-scrollbar{display:none;}
   .cat-tab{
     flex:none;
-    border:1px solid var(--line);
-    background:var(--surface);
+    border:none;
+    background:transparent;
     color:var(--ink-soft);
-    padding:7px 14px;
-    border-radius:100px;
-    font-size:13px;
-    font-weight:600;
+    padding:10px 18px;
+    border-radius:10px;
+    font-size:15px;
+    font-weight:700;
     cursor:pointer;
     white-space:nowrap;
-    font-family:'Assistant',sans-serif;
+    font-family:'Frank Ruhl Libre',serif;
   }
   .cat-tab.active{
-    background:var(--ink);
-    color:var(--paper);
-    border-color:var(--ink);
+    background:var(--surface);
+    color:var(--brick);
+    box-shadow:0 1px 3px rgba(0,0,0,.1);
   }
 
   .item-grid{
     display:flex;
     flex-wrap:wrap;
     gap:8px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px;
   }
   .item-btn{
     border:1px solid var(--line);
-    background:var(--surface);
+    background:var(--paper);
     color:var(--ink);
-    padding:8px 14px;
+    padding:7px 13px;
     border-radius:100px;
-    font-size:14px;
+    font-size:13.5px;
     cursor:pointer;
     font-family:'Assistant',sans-serif;
   }
@@ -940,22 +947,49 @@
     font-family:'Assistant',sans-serif;
   }
 
-  .week-row{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    padding:8px 0;
+  .week-row-multi{
+    padding:10px 0;
     border-bottom:1px solid var(--line);
   }
-  .week-row:last-of-type{border-bottom:none;}
+  .week-row-multi:last-of-type{border-bottom:none;}
   .week-day{
     font-weight:700;
     font-size:13.5px;
-    width:52px;
-    flex:none;
+    margin-bottom:6px;
+  }
+  .week-chips{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-bottom:8px;
+  }
+  .week-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background:var(--herb-soft);
+    color:var(--herb);
+    border-radius:100px;
+    padding:5px 6px 5px 12px;
+    font-size:12.5px;
+    font-weight:600;
+  }
+  .week-chip-x{
+    background:none;
+    border:none;
+    color:var(--herb);
+    font-size:14px;
+    line-height:1;
+    cursor:pointer;
+    padding:2px 4px;
+    opacity:.7;
+  }
+  .week-empty{
+    font-size:12.5px;
+    color:var(--ink-soft);
   }
   .week-select{
-    flex:1;
+    width:100%;
     padding:7px 8px;
     border-radius:8px;
     border:1px solid var(--line);
@@ -963,6 +997,97 @@
     font-size:13px;
     background:var(--surface);
     color:var(--ink);
+  }
+
+  .settings-hint{
+    font-size:13.5px;
+    color:var(--ink-soft);
+    line-height:1.6;
+    margin-bottom:14px;
+  }
+  .import-btn{
+    border:none;
+    background:var(--ink);
+    color:var(--paper);
+    padding:11px 18px;
+    border-radius:12px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+    font-family:'Assistant',sans-serif;
+  }
+  .import-form-box{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:16px;
+    margin-top:16px;
+  }
+  .import-form-box label{
+    display:block;
+    font-size:12.5px;
+    font-weight:700;
+    color:var(--ink-soft);
+    margin:12px 0 4px;
+  }
+  .import-form-box label:first-child{margin-top:0;}
+  .import-form-box input[type=text],
+  .import-form-box textarea{
+    width:100%;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:8px 10px;
+    font-family:'Assistant',sans-serif;
+    font-size:13.5px;
+    color:var(--ink);
+    background:var(--paper);
+    resize:vertical;
+  }
+  .import-form-box textarea{min-height:90px; line-height:1.6;}
+  .import-form-actions{
+    display:flex;
+    gap:10px;
+    margin-top:14px;
+  }
+  .import-form-actions button{
+    border:none;
+    background:var(--brick);
+    color:#fff;
+    padding:9px 16px;
+    border-radius:10px;
+    font-size:13.5px;
+    font-weight:700;
+    cursor:pointer;
+    font-family:'Assistant',sans-serif;
+  }
+  .import-form-actions button.secondary{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--ink-soft);
+  }
+  .custom-recipe-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:10px 0;
+    border-bottom:1px solid var(--line);
+    font-size:14px;
+  }
+  .custom-recipe-row:last-of-type{border-bottom:none;}
+  .custom-recipe-row button{
+    border:none;
+    background:var(--brick-soft);
+    color:var(--brick);
+    padding:5px 10px;
+    border-radius:8px;
+    font-size:12px;
+    font-weight:700;
+    cursor:pointer;
+    font-family:'Assistant',sans-serif;
+  }
+  .custom-empty{
+    font-size:13.5px;
+    color:var(--ink-soft);
   }
   .week-actions{
     margin-top:14px;
@@ -1094,6 +1219,21 @@
     </section>
   </div>
 
+  <div class="tab-content" id="tab-settings">
+    <section style="margin-top:16px;">
+      <h2>ייבוא מתכונים מקובץ</h2>
+      <p class="settings-hint">טוענים קובץ Word (.docx) או PDF שמכיל מתכון אחד. המערכת תנסה לזהות כותרת, מצרכים והוראות הכנה — ותאפשר לכם לתקן לפני השמירה.</p>
+      <input type="file" id="importFileInput" accept=".docx,.pdf" style="display:none;">
+      <button class="import-btn" id="importFileBtn">📄 בחרו קובץ להעלאה</button>
+      <div class="cam-status" id="importStatus"></div>
+      <div id="importForm"></div>
+    </section>
+    <section>
+      <h2>מתכונים שיובאו</h2>
+      <div id="customRecipesList"></div>
+    </section>
+  </div>
+
   <footer class="hint">הנתונים נשמרים במכשיר שלכם בלבד · חלק מהמתכונים בהשראת heli-group.co.il</footer>
 </div>
 
@@ -1109,6 +1249,10 @@
   <button class="tab-btn" id="tabBtnShopping" data-tab="shopping">
     <span class="tab-icon">🛒</span>
     <span>קניות</span>
+  </button>
+  <button class="tab-btn" id="tabBtnSettings" data-tab="settings">
+    <span class="tab-icon">⚙️</span>
+    <span>הגדרות</span>
   </button>
 </nav>
 
@@ -1377,6 +1521,10 @@ const RECIPES = [
    steps:["מבשלים עדשים במים עד שמתרככות אך שומרות על צורתן, מסננים","מטגנים בצל ושום בשמן זית עד להזהבה","מערבבים את העדשים עם הבצל המטוגן, מיץ לימון ופטרוזיליה קצוצה","מתבלים במלח ומגישים פושר או קר"]}
 ];
 
+// Recipes imported by the user via Settings → Import (persisted separately, merged in)
+let customRecipes = JSON.parse(localStorage.getItem('custom_recipes')||'[]');
+RECIPES.push(...customRecipes);
+
 function norm(s){ return s.trim().replace(/\s+/g,' '); }
 
 const MEAT_INGREDIENTS = ["עוף","בשר טחון","טונה","סלמון","נקניקיות"];
@@ -1396,6 +1544,9 @@ let syncCode = localStorage.getItem('sync_code') || null;
 let ranOutMode = false;
 const WEEK_DAYS = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
 let weeklyPlan = JSON.parse(localStorage.getItem('weekly_plan')||'{}');
+Object.keys(weeklyPlan).forEach(day=>{
+  if(typeof weeklyPlan[day] === 'string'){ weeklyPlan[day] = weeklyPlan[day] ? [weeklyPlan[day]] : []; }
+});
 let weekOpen = localStorage.getItem('week_open') === '1';
 let itemUsage = JSON.parse(localStorage.getItem('item_usage')||'{}');
 
@@ -1435,17 +1586,24 @@ function saveShoppingList(){ localStorage.setItem('shopping_list', JSON.stringif
 function saveBought(){ localStorage.setItem('bought_items', JSON.stringify([...boughtItems])); pushSync(); }
 function saveFavorites(){ localStorage.setItem('favorites', JSON.stringify([...favorites])); }
 
-// ——— Cross-device shopping list sync (via kvdb.io, no account needed) ———
+// ——— Cross-device shopping list sync (via jsonblob.com, no account needed) ———
 async function createSyncBucket(){
-  const res = await fetch('https://kvdb.io/', {method:'POST'});
-  if(!res.ok) throw new Error('create failed');
-  return (await res.text()).trim();
+  const res = await fetch('https://jsonblob.com/api/jsonBlob', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({items:[], bought:[], ts:Date.now()})
+  });
+  if(!res.ok) throw new Error('create failed: ' + res.status);
+  const location = res.headers.get('Location') || res.headers.get('location');
+  if(!location) throw new Error('no location header returned');
+  return location.split('/').pop();
 }
 async function pushSync(){
   if(!syncCode) return;
   try{
-    await fetch(`https://kvdb.io/${syncCode}/list`, {
-      method:'POST',
+    await fetch(`https://jsonblob.com/api/jsonBlob/${syncCode}`, {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
       body: JSON.stringify({items:[...shoppingList], bought:[...boughtItems], ts:Date.now()})
     });
   }catch(e){ /* offline, or sync service unreachable — will retry on next change */ }
@@ -1453,9 +1611,9 @@ async function pushSync(){
 async function pullSync(){
   if(!syncCode) return;
   try{
-    const res = await fetch(`https://kvdb.io/${syncCode}/list`);
+    const res = await fetch(`https://jsonblob.com/api/jsonBlob/${syncCode}`);
     if(!res.ok) return;
-    const data = JSON.parse(await res.text());
+    const data = await res.json();
     shoppingList = new Set(data.items||[]);
     boughtItems = new Set(data.bought||[]);
     localStorage.setItem('shopping_list', JSON.stringify([...shoppingList]));
@@ -1483,7 +1641,7 @@ function renderSyncBoxHTML(){
       <div class="sync-row"><span class="sync-status">📵 לא מסונכרן בין מכשירים</span></div>
       <div class="sync-setup">
         <button id="syncCreateBtn">צרו סנכרון חדש</button>
-        <input type="text" id="syncJoinInput" placeholder="או הדביקו קוד ממכשיר אחר...">
+        <input type="text" id="syncJoinInput" placeholder="או הדביקו קוד ממכשיר/מחשב אחר...">
         <button id="syncJoinBtn">הצטרפו</button>
       </div>
     </div>`;
@@ -1497,7 +1655,7 @@ function wireSyncBox(){
       syncCode = code;
       localStorage.setItem('sync_code', code);
       await pushSync();
-    }catch(e){ alert('לא הצלחנו ליצור סנכרון כרגע. נסו שוב בעוד רגע.'); }
+    }catch(e){ alert('לא הצלחנו ליצור סנכרון כרגע (' + e.message + '). ודאו חיבור לאינטרנט ונסו שוב.'); }
     renderShoppingPanel();
   };
   const joinBtn = document.getElementById('syncJoinBtn');
@@ -1512,7 +1670,7 @@ function wireSyncBox(){
   };
   const copyBtn = document.getElementById('syncCopyBtn');
   if(copyBtn) copyBtn.onclick = ()=>{
-    if(navigator.clipboard) navigator.clipboard.writeText(syncCode).then(()=>alert('הקוד הועתק — שלחו אותו למכשיר השני והדביקו שם ב״הצטרפו״')).catch(()=>{});
+    if(navigator.clipboard) navigator.clipboard.writeText(syncCode).then(()=>alert('הקוד הועתק — שלחו אותו לטלפון או למחשב השני, ושם הדביקו אותו ב״הצטרפו״')).catch(()=>{});
   };
   const refreshBtn = document.getElementById('syncRefreshBtn');
   if(refreshBtn) refreshBtn.onclick = ()=> pullSync();
@@ -1940,13 +2098,18 @@ function renderWeekPlan(){
   const options = RECIPES.map(r=>r.name).sort((a,b)=>a.localeCompare(b,'he'));
   let html = '';
   WEEK_DAYS.forEach(day=>{
-    const selected = weeklyPlan[day] || '';
+    const chosen = weeklyPlan[day] || [];
+    const chips = chosen.map(name=>`
+      <span class="week-chip">${name}<button type="button" class="week-chip-x" data-day="${day}" data-name="${name}">×</button></span>
+    `).join('');
+    const remaining = options.filter(n=>!chosen.includes(n));
     html += `
-      <div class="week-row">
-        <span class="week-day">יום ${day}</span>
+      <div class="week-row-multi">
+        <div class="week-day">יום ${day}</div>
+        <div class="week-chips">${chips || '<span class="week-empty">— אין מתכון —</span>'}</div>
         <select class="week-select" data-day="${day}">
-          <option value="">— לא נבחר —</option>
-          ${options.map(name=>`<option value="${name}" ${name===selected?'selected':''}>${name}</option>`).join('')}
+          <option value="">+ הוסיפו מתכון ליום זה</option>
+          ${remaining.map(name=>`<option value="${name}">${name}</option>`).join('')}
         </select>
       </div>`;
   });
@@ -1961,12 +2124,25 @@ function renderWeekPlan(){
     sel.onchange = (e)=>{
       const day = e.target.dataset.day;
       const val = e.target.value;
-      if(val) weeklyPlan[day] = val; else delete weeklyPlan[day];
+      if(val){
+        if(!weeklyPlan[day]) weeklyPlan[day] = [];
+        if(!weeklyPlan[day].includes(val)) weeklyPlan[day].push(val);
+        localStorage.setItem('weekly_plan', JSON.stringify(weeklyPlan));
+        renderWeekPlan();
+      }
+    };
+  });
+  panel.querySelectorAll('.week-chip-x').forEach(x=>{
+    x.onclick = ()=>{
+      const day = x.dataset.day;
+      const name = x.dataset.name;
+      weeklyPlan[day] = (weeklyPlan[day]||[]).filter(n=>n!==name);
       localStorage.setItem('weekly_plan', JSON.stringify(weeklyPlan));
+      renderWeekPlan();
     };
   });
   document.getElementById('weekShopBtn').onclick = ()=>{
-    const chosen = Object.values(weeklyPlan).filter(Boolean);
+    const chosen = Object.values(weeklyPlan).flat().filter(Boolean);
     if(chosen.length===0){ alert('בחרו קודם מתכונים לימי השבוע'); return; }
     let addedCount = 0;
     chosen.forEach(name=>{
@@ -2367,6 +2543,7 @@ function renderAll(){
   renderTabBadges();
   renderRanoutUI();
   renderWeekPlan();
+  renderCustomRecipesList();
 }
 
 let activeTab = localStorage.getItem('active_tab') || 'fridge';
@@ -2427,7 +2604,8 @@ document.getElementById('themeBtn').onclick = ()=>{
   applyTheme();
 };
 
-function startVoiceInput(onResult, _isRetry){
+async function startVoiceInput(onResult, attempt){
+  attempt = attempt || 0;
   if(location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1'){
     alert('זיהוי קול דורש חיבור מאובטח (HTTPS). האתר צריך להיות מתארח בכתובת https (למשל דרך Netlify) — לא נפתח כקובץ מקומי במכשיר.');
     return;
@@ -2436,6 +2614,15 @@ function startVoiceInput(onResult, _isRetry){
   if(!SR){
     alert('זיהוי דיבור לא נתמך בדפדפן הזה (נסו Chrome באנדרואיד/מחשב)');
     return;
+  }
+  if(attempt === 0 && navigator.permissions && navigator.permissions.query){
+    try{
+      const status = await navigator.permissions.query({name:'microphone'});
+      if(status.state === 'denied'){
+        alert('הגישה למיקרופון חסומה עבור האתר הזה. פתחו את הגדרות האתר בדפדפן (הסמל ליד שורת הכתובת) ואפשרו הרשאת מיקרופון, ואז נסו שוב.');
+        return;
+      }
+    }catch(e){ /* permission query not supported for microphone on this browser — proceed anyway */ }
   }
   const rec = new SR();
   rec.lang = 'he-IL';
@@ -2446,9 +2633,9 @@ function startVoiceInput(onResult, _isRetry){
     if(text) onResult(norm(text));
   };
   rec.onerror = (ev)=>{
-    if(ev.error === 'aborted' && !_isRetry){
-      // Can happen right after the mic permission prompt is granted — retry once silently
-      setTimeout(()=> startVoiceInput(onResult, true), 350);
+    if(ev.error === 'aborted' && attempt < 2){
+      // Can happen right after the mic permission prompt, or transiently on some Android/Chrome builds — retry a couple of times
+      setTimeout(()=> startVoiceInput(onResult, attempt+1), 500);
       return;
     }
     const reasons = {
@@ -2456,7 +2643,7 @@ function startVoiceInput(onResult, _isRetry){
       'no-speech': 'לא זוהה דיבור. נסו שוב וקצת יותר קרוב למיקרופון.',
       'audio-capture': 'לא נמצא מיקרופון זמין במכשיר.',
       'network': 'בעיית רשת בזיהוי הדיבור. ודאו חיבור לאינטרנט ונסו שוב.',
-      'aborted': 'זיהוי הדיבור נעצר באמצע. ודאו שהמיקרופון לא בשימוש על ידי אפליקציה אחרת ונסו שוב.'
+      'aborted': 'זיהוי הדיבור ממשיך להיכשל במכשיר הזה — לרוב זו תקלה ברמת מערכת ההפעלה/דפדפן ולא קשורה לאתר. אפשר להמשיך להקליד; ההשלמה האוטומטית תעזור.'
     };
     alert(reasons[ev.error] || ('שגיאת זיהוי דיבור: ' + ev.error));
   };
@@ -2487,6 +2674,139 @@ document.getElementById('customInput').addEventListener('input', (e)=>{
 document.getElementById('searchInput').addEventListener('input', (e)=>{
   filters.search = e.target.value;
   renderRecipes();
+});
+
+// ——— Import recipes from Word/PDF files ———
+function renderCustomRecipesList(){
+  const el = document.getElementById('customRecipesList');
+  if(!el) return;
+  if(customRecipes.length===0){
+    el.innerHTML = '<p class="custom-empty">עדיין לא יובאו מתכונים מקבצים</p>';
+    return;
+  }
+  el.innerHTML = customRecipes.map(r=>`
+    <div class="custom-recipe-row">
+      <span>${r.name}</span>
+      <button data-name="${r.name}" class="del-custom-btn">מחקו</button>
+    </div>
+  `).join('');
+  el.querySelectorAll('.del-custom-btn').forEach(btn=>{
+    btn.onclick = ()=>{
+      const name = btn.dataset.name;
+      if(!confirm(`למחוק את "${name}"?`)) return;
+      customRecipes = customRecipes.filter(r=>r.name!==name);
+      localStorage.setItem('custom_recipes', JSON.stringify(customRecipes));
+      const idx = RECIPES.findIndex(r=>r.name===name);
+      if(idx>-1) RECIPES.splice(idx,1);
+      renderAll();
+    };
+  });
+}
+
+function parseRecipeText(text, fallbackTitle){
+  const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
+  const title = lines[0] || fallbackTitle || 'מתכון מיובא';
+  const ingIdx = lines.findIndex(l=>/^(מצרכים|רכיבים|ingredients)/i.test(l));
+  const stepsIdx = lines.findIndex(l=>/^(הכנה|אופן ההכנה|אופן הכנה|הוראות|צעדי הכנה|צעדים|steps|instructions|method)/i.test(l));
+  let ingredients = [];
+  let steps = [];
+  const clean = (l)=> l.replace(/^[-•*\d.)\s]+/, '').trim();
+  if(ingIdx > -1){
+    const end = stepsIdx > ingIdx ? stepsIdx : lines.length;
+    ingredients = lines.slice(ingIdx+1, end).map(clean).filter(Boolean);
+  }
+  if(stepsIdx > -1){
+    steps = lines.slice(stepsIdx+1).map(clean).filter(Boolean);
+  }
+  if(ingIdx === -1 && stepsIdx === -1){
+    // No recognizable section headers — leave ingredients empty, put the rest as steps for manual cleanup
+    steps = lines.slice(1).map(clean).filter(Boolean);
+  }
+  return {title, ingredients, steps};
+}
+
+async function extractTextFromFile(file){
+  const ext = file.name.split('.').pop().toLowerCase();
+  const buf = await file.arrayBuffer();
+  if(ext === 'docx'){
+    if(!window.mammoth) await loadScript('https://cdn.jsdelivr.net/npm/mammoth@1.7.0/mammoth.browser.min.js');
+    const result = await window.mammoth.extractRawText({arrayBuffer: buf});
+    return result.value;
+  }
+  if(ext === 'pdf'){
+    if(!window.pdfjsLib) await loadScript('https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js');
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+    const pdf = await window.pdfjsLib.getDocument({data: buf}).promise;
+    let text = '';
+    for(let i=1; i<=pdf.numPages; i++){
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      text += content.items.map(it=>it.str).join('\n') + '\n';
+    }
+    return text;
+  }
+  throw new Error('unsupported-format');
+}
+
+function renderImportForm(parsed){
+  const el = document.getElementById('importForm');
+  el.innerHTML = `
+    <div class="import-form-box">
+      <label>שם המתכון</label>
+      <input type="text" id="impTitle" value="${parsed.title.replace(/"/g,'&quot;')}">
+      <label>מצרכים (שורה לכל מצרך)</label>
+      <textarea id="impIngredients">${parsed.ingredients.join('\n')}</textarea>
+      <label>הוראות הכנה (שורה לכל שלב)</label>
+      <textarea id="impSteps">${parsed.steps.join('\n')}</textarea>
+      <label>זמן הכנה (לא חובה)</label>
+      <input type="text" id="impTime" placeholder="לדוגמה: 30 דק׳">
+      <div class="import-form-actions">
+        <button id="impSaveBtn">שמרו מתכון</button>
+        <button class="secondary" id="impCancelBtn">ביטול</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('impSaveBtn').onclick = ()=>{
+    const name = norm(document.getElementById('impTitle').value);
+    const ingredients = document.getElementById('impIngredients').value.split('\n').map(norm).filter(Boolean);
+    const steps = document.getElementById('impSteps').value.split('\n').map(norm).filter(Boolean);
+    const time = norm(document.getElementById('impTime').value) || 'לא צוין';
+    if(!name || steps.length===0){
+      alert('נא למלא לפחות שם מתכון ושלב הכנה אחד');
+      return;
+    }
+    const recipe = {name, time, ingredients, steps, difficulty:'', cuisine:'מיובא'};
+    customRecipes.push(recipe);
+    localStorage.setItem('custom_recipes', JSON.stringify(customRecipes));
+    RECIPES.push(recipe);
+    el.innerHTML = '';
+    document.getElementById('importStatus').textContent = `✓ "${name}" נשמר בהצלחה`;
+    setTimeout(()=>{ document.getElementById('importStatus').textContent=''; }, 4000);
+    renderAll();
+  };
+  document.getElementById('impCancelBtn').onclick = ()=>{ el.innerHTML = ''; };
+}
+
+document.getElementById('importFileBtn').onclick = ()=> document.getElementById('importFileInput').click();
+document.getElementById('importFileInput').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const status = document.getElementById('importStatus');
+  status.textContent = 'קוראים את הקובץ...';
+  try{
+    const text = await extractTextFromFile(file);
+    status.textContent = '';
+    const parsed = parseRecipeText(text, file.name.replace(/\.(docx|pdf)$/i,''));
+    renderImportForm(parsed);
+  }catch(err){
+    status.textContent = '';
+    if(err.message === 'unsupported-format'){
+      alert('פורמט לא נתמך. קבצי .doc ישנים לא נתמכים ישירות — שמרו כ-.docx דרך Word ונסו שוב, או השתמשו ב-PDF.');
+    } else {
+      alert('קריאת הקובץ נכשלה. נסו קובץ אחר, או בדקו שהוא לא פגום.');
+    }
+  }
+  e.target.value = '';
 });
 
 // Camera + Voice for fridge add row
