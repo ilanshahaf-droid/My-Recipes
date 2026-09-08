@@ -178,11 +178,13 @@
 
   .add-row{
     display:flex;
+    flex-wrap:wrap;
     gap:8px;
     margin-bottom:14px;
   }
   .add-row input{
-    flex:1;
+    flex:1 1 140px;
+    min-width:0;
     border:1px solid var(--line);
     background:var(--surface);
     border-radius:12px;
@@ -826,6 +828,15 @@
     gap:8px;
     margin-bottom:14px;
   }
+  .list-chip-wrap{
+    display:inline-flex;
+    align-items:stretch;
+    border-radius:100px;
+    overflow:hidden;
+  }
+  .list-chip-wrap .list-chip{
+    border-radius:100px 0 0 100px;
+  }
   .list-chip{
     display:inline-flex;
     align-items:center;
@@ -851,11 +862,17 @@
     color:var(--ink-soft);
   }
   .list-chip-x{
+    border:1px solid var(--line);
+    border-right:none;
+    background:var(--surface);
+    color:var(--brick);
     font-size:14px;
-    opacity:.7;
-    padding:0 2px;
+    font-weight:700;
+    padding:8px 10px;
+    border-radius:0 100px 100px 0;
+    cursor:pointer;
   }
-  .list-chip-x:hover{opacity:1;}
+  .list-chip-x:hover{background:var(--brick-soft);}
 
   .sync-box{
     background:var(--herb-soft);
@@ -1152,6 +1169,63 @@
     color:var(--ink-soft);
   }
 
+  .app-modal-overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.5);
+    z-index:200;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .app-modal-overlay.active{display:flex;}
+  .app-modal-box{
+    background:var(--surface);
+    border-radius:16px;
+    padding:22px;
+    max-width:360px;
+    width:100%;
+  }
+  .app-modal-message{
+    font-size:15px;
+    line-height:1.6;
+    margin-bottom:14px;
+    color:var(--ink);
+  }
+  .app-modal-input{
+    width:100%;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:10px 12px;
+    font-size:15px;
+    font-family:'Assistant',sans-serif;
+    color:var(--ink);
+    background:var(--paper);
+    margin-bottom:16px;
+  }
+  .app-modal-actions{
+    display:flex;
+    gap:10px;
+    justify-content:flex-end;
+  }
+  .app-modal-actions button{
+    border:none;
+    background:var(--brick);
+    color:#fff;
+    padding:9px 18px;
+    border-radius:10px;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+    font-family:'Assistant',sans-serif;
+  }
+  .app-modal-actions button.secondary{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--ink-soft);
+  }
+
   .barcode-overlay{
     display:none;
     position:fixed;
@@ -1272,6 +1346,16 @@
       <h2>מתכונים שיובאו</h2>
       <div id="customRecipesList"></div>
     </section>
+    <section>
+      <h2>סיווג מצרכים</h2>
+      <p class="settings-hint">קבעו לאיזו קטגוריה ישויך מצרך ברשימת הקניות (למשל "גבינה בולגרית" תחת "מוצרי חלב"). זה משפיע על הקיבוץ ברשימת הקניות בלבד.</p>
+      <div class="add-row">
+        <input type="text" id="catAssignInput" placeholder="שם המצרך...">
+        <select id="catAssignSelect" class="week-select" style="flex:1 1 140px;"></select>
+        <button id="catAssignBtn">שמרו</button>
+      </div>
+      <div id="catOverridesList"></div>
+    </section>
   </div>
 
   <footer class="hint">הנתונים נשמרים במכשיר שלכם בלבד · חלק מהמתכונים בהשראת heli-group.co.il</footer>
@@ -1297,6 +1381,17 @@
 </nav>
 
 <!-- Cooking mode overlay -->
+<div class="app-modal-overlay" id="appModalOverlay">
+  <div class="app-modal-box">
+    <div class="app-modal-message" id="appModalMessage"></div>
+    <input type="text" class="app-modal-input" id="appModalInput" style="display:none;">
+    <div class="app-modal-actions">
+      <button id="appModalCancel" class="secondary">ביטול</button>
+      <button id="appModalOk">אישור</button>
+    </div>
+  </div>
+</div>
+
 <div class="barcode-overlay" id="barcodeOverlay">
   <video id="barcodeVideo" autoplay playsinline muted></video>
   <div class="barcode-hint" id="barcodeHint">כוונו את המצלמה לברקוד המוצר</div>
@@ -1342,6 +1437,12 @@ const CATALOG = {
 // ingredient -> category map
 const ING_TO_CAT = {};
 Object.entries(CATALOG).forEach(([cat, items]) => items.forEach(i => ING_TO_CAT[i] = cat));
+let categoryOverrides = JSON.parse(localStorage.getItem('category_overrides')||'{}');
+function catOf(item){ return categoryOverrides[item] || ING_TO_CAT[item] || 'אחר'; }
+function setCategoryOverride(item, cat){
+  if(cat) categoryOverrides[item] = cat; else delete categoryOverrides[item];
+  localStorage.setItem('category_overrides', JSON.stringify(categoryOverrides));
+}
 
 const ING_EMOJI = {
   "עגבניות":"🍅","מלפפונים":"🥒","בצל":"🧅","שום":"🧄","גזר":"🥕","פלפל":"🫑",
@@ -1693,29 +1794,66 @@ function switchShoppingList(id){
   renderShoppingPanel();
   renderTabBadges();
 }
+// ——— Generic in-app modal (replaces native confirm/prompt, which can be unreliable inside installed PWAs) ———
+function closeAppModal(){
+  document.getElementById('appModalOverlay').classList.remove('active');
+}
+function showConfirmModal(message, onYes){
+  const overlay = document.getElementById('appModalOverlay');
+  document.getElementById('appModalMessage').textContent = message;
+  const input = document.getElementById('appModalInput');
+  input.style.display = 'none';
+  overlay.classList.add('active');
+  document.getElementById('appModalOk').onclick = ()=>{ closeAppModal(); onYes(); };
+  document.getElementById('appModalCancel').onclick = closeAppModal;
+}
+function showPromptModal(message, onSubmit, defaultValue){
+  const overlay = document.getElementById('appModalOverlay');
+  document.getElementById('appModalMessage').textContent = message;
+  const input = document.getElementById('appModalInput');
+  input.style.display = 'block';
+  input.value = defaultValue || '';
+  overlay.classList.add('active');
+  setTimeout(()=>input.focus(), 50);
+  const submit = ()=>{
+    const val = norm(input.value||'');
+    if(!val) return;
+    closeAppModal();
+    onSubmit(val);
+  };
+  document.getElementById('appModalOk').onclick = submit;
+  document.getElementById('appModalCancel').onclick = closeAppModal;
+  input.onkeydown = (e)=>{ if(e.key==='Enter') submit(); };
+}
+
 function createShoppingList(){
-  const name = prompt('שם הרשימה החדשה:');
-  if(!name || !norm(name)) return;
-  const id = 'list_' + Date.now();
-  shoppingLists[id] = {name: norm(name), items: [], bought: [], syncCode: null};
-  localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
-  switchShoppingList(id);
+  showPromptModal('שם הרשימה החדשה:', (name)=>{
+    const id = 'list_' + Date.now();
+    shoppingLists[id] = {name, items: [], bought: [], syncCode: null};
+    localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
+    switchShoppingList(id);
+  });
 }
 function deleteShoppingList(id){
-  if(id === 'main') return;
-  if(!confirm(`למחוק את הרשימה "${shoppingLists[id].name}"? הפעולה לא הפיכה.`)) return;
-  delete shoppingLists[id];
-  localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
-  if(activeListId === id) switchShoppingList('main');
-  else renderShoppingPanel();
+  if(id === 'main' || !shoppingLists[id]) return;
+  showConfirmModal(`למחוק את הרשימה "${shoppingLists[id].name}"? הפעולה לא הפיכה.`, ()=>{
+    delete shoppingLists[id];
+    localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
+    if(activeListId === id) switchShoppingList('main');
+    else renderShoppingPanel();
+  });
 }
 function renderListSwitcher(){
   const chips = Object.entries(shoppingLists).map(([id,list])=>{
     const active = id === activeListId;
+    if(id === 'main'){
+      return `<button type="button" class="list-chip${active?' active':''}" data-id="${id}">${list.name}</button>`;
+    }
     return `
-      <button type="button" class="list-chip${active?' active':''}" data-id="${id}">
-        ${list.name}${id!=='main' ? `<span class="list-chip-x" data-id="${id}">×</span>` : ''}
-      </button>`;
+      <span class="list-chip-wrap">
+        <button type="button" class="list-chip${active?' active':''}" data-id="${id}">${list.name}</button>
+        <button type="button" class="list-chip-x" data-id="${id}" aria-label="מחיקת רשימה">×</button>
+      </span>`;
   }).join('');
   return `
     <div class="list-switcher">
@@ -1725,16 +1863,10 @@ function renderListSwitcher(){
 }
 function wireListSwitcher(){
   document.querySelectorAll('.list-chip[data-id]').forEach(btn=>{
-    btn.onclick = (e)=>{
-      if(e.target.classList.contains('list-chip-x')) return; // handled separately
-      switchShoppingList(btn.dataset.id);
-    };
+    btn.onclick = ()=> switchShoppingList(btn.dataset.id);
   });
   document.querySelectorAll('.list-chip-x').forEach(x=>{
-    x.onclick = (e)=>{
-      e.stopPropagation();
-      deleteShoppingList(x.dataset.id);
-    };
+    x.onclick = ()=> deleteShoppingList(x.dataset.id);
   });
   const addBtn = document.getElementById('addListBtn');
   if(addBtn) addBtn.onclick = createShoppingList;
@@ -1795,6 +1927,7 @@ function renderSyncBoxHTML(){
           <span class="sync-status">🔄 מסונכרן · קוד: <b>${syncCode}</b></span>
           <div class="sync-actions">
             <button id="syncCopyBtn">העתקה</button>
+            <button id="syncWhatsappBtn">💬 וואטסאפ</button>
             <button id="syncRefreshBtn">רענון</button>
             <button id="syncStopBtn">ניתוק</button>
           </div>
@@ -1853,15 +1986,21 @@ function wireSyncBox(){
   if(copyBtn) copyBtn.onclick = ()=>{
     if(navigator.clipboard) navigator.clipboard.writeText(syncCode).then(()=>alert('הקוד הועתק — שלחו אותו לטלפון או למחשב השני, ושם הדביקו אותו ב״הצטרפו״')).catch(()=>{});
   };
+  const waBtn = document.getElementById('syncWhatsappBtn');
+  if(waBtn) waBtn.onclick = ()=>{
+    const text = `בואו נסנכרן את רשימת הקניות "${getActiveList().name}" — פתחו את האפליקציה, לכו ל"קניות" ולחצו "הצטרפו" עם הקוד: ${syncCode}`;
+    window.open('https://wa.me/?text='+encodeURIComponent(text), '_blank');
+  };
   const refreshBtn = document.getElementById('syncRefreshBtn');
   if(refreshBtn) refreshBtn.onclick = ()=> pullSync();
   const stopBtn = document.getElementById('syncStopBtn');
   if(stopBtn) stopBtn.onclick = ()=>{
-    if(!confirm('להפסיק את הסנכרון במכשיר הזה? (הרשימה תישאר מקומית)')) return;
-    syncCode = null;
-    getActiveList().syncCode = null;
-    localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
-    renderShoppingPanel();
+    showConfirmModal('להפסיק את הסנכרון במכשיר הזה? (הרשימה תישאר מקומית)', ()=>{
+      syncCode = null;
+      getActiveList().syncCode = null;
+      localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
+      renderShoppingPanel();
+    });
   };
 }
 function saveTheme(){ localStorage.setItem('theme', isDark ? 'dark' : 'light'); }
@@ -2344,10 +2483,11 @@ function renderWeekPlan(){
     alert(addedCount>0 ? `נוספו ${addedCount} מצרכים לרשימת הקניות` : 'הכל כבר יש לכם או כבר ברשימה');
   };
   document.getElementById('weekClearBtn').onclick = ()=>{
-    if(!confirm('לנקות את כל תוכנית השבוע?')) return;
-    weeklyPlan = {};
-    localStorage.setItem('weekly_plan', JSON.stringify(weeklyPlan));
-    renderWeekPlan();
+    showConfirmModal('לנקות את כל תוכנית השבוע?', ()=>{
+      weeklyPlan = {};
+      localStorage.setItem('weekly_plan', JSON.stringify(weeklyPlan));
+      renderWeekPlan();
+    });
   };
 }
 
@@ -2420,7 +2560,7 @@ function renderShoppingPanel(){
   const checkedCount = [...shoppingList].filter(i=>boughtItems.has(i)).length;
   [...shoppingList].forEach(item=>{
     if(!showCheckedShop && boughtItems.has(item)) return;
-    const cat = ING_TO_CAT[item] || 'אחר';
+    const cat = catOf(item);
     if(!groups[cat]) groups[cat] = [];
     groups[cat].push(item);
   });
@@ -2494,7 +2634,7 @@ function renderShoppingPanel(){
   document.getElementById('copyShoppingBtn').onclick = ()=>{
     const lines = ['רשימת קניות:'];
     catOrder.forEach(cat=>{
-      const items = [...shoppingList].filter(i=>(ING_TO_CAT[i]||'אחר')===cat);
+      const items = [...shoppingList].filter(i=>catOf(i)===cat);
       if(!items.length) return;
       lines.push('', cat + ':');
       items.sort((a,b)=>a.localeCompare(b,'he')).forEach(i=>
@@ -2508,7 +2648,7 @@ function renderShoppingPanel(){
   document.getElementById('whatsappShareBtn').onclick = ()=>{
     const lines = ['רשימת קניות:'];
     catOrder.forEach(cat=>{
-      const items = [...shoppingList].filter(i=>(ING_TO_CAT[i]||'אחר')===cat && !boughtItems.has(i));
+      const items = [...shoppingList].filter(i=>catOf(i)===cat && !boughtItems.has(i));
       if(!items.length) return;
       lines.push('', '*'+cat+'*');
       items.forEach(i=>lines.push('• '+i));
@@ -2524,12 +2664,13 @@ function renderShoppingPanel(){
     renderShoppingPanel();
   };
   document.getElementById('clearShoppingBtn').onclick = ()=>{
-    if(!confirm('למחוק את כל רשימת הקניות?')) return;
-    shoppingList.clear();
-    boughtItems.clear();
-    saveShoppingList();
-    saveBought();
-    renderShoppingPanel();
+    showConfirmModal('למחוק את כל רשימת הקניות?', ()=>{
+      shoppingList.clear();
+      boughtItems.clear();
+      saveShoppingList();
+      saveBought();
+      renderShoppingPanel();
+    });
   };
 
   document.getElementById('importShopBtn').onclick = importShoppingList;
@@ -2728,6 +2869,7 @@ function renderAll(){
   renderRanoutUI();
   renderWeekPlan();
   renderCustomRecipesList();
+  renderCatOverridesUI();
 }
 
 let activeTab = localStorage.getItem('active_tab') || 'fridge';
@@ -2859,6 +3001,46 @@ document.getElementById('searchInput').addEventListener('input', (e)=>{
 });
 
 // ——— Import recipes from Word/PDF files ———
+function renderCatOverridesUI(){
+  const select = document.getElementById('catAssignSelect');
+  if(!select) return;
+  const cats = Object.keys(CATALOG).concat(['אחר']);
+  select.innerHTML = cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+
+  const listEl = document.getElementById('catOverridesList');
+  const entries = Object.entries(categoryOverrides);
+  if(entries.length===0){
+    listEl.innerHTML = '<p class="custom-empty">עדיין לא הגדרתם סיווגים מותאמים אישית</p>';
+  } else {
+    listEl.innerHTML = entries.map(([item,cat])=>`
+      <div class="custom-recipe-row">
+        <span>${item} ← ${cat}</span>
+        <button data-item="${item}" class="del-cat-btn">מחקו</button>
+      </div>
+    `).join('');
+    listEl.querySelectorAll('.del-cat-btn').forEach(btn=>{
+      btn.onclick = ()=>{
+        setCategoryOverride(btn.dataset.item, null);
+        renderCatOverridesUI();
+        renderShoppingPanel();
+      };
+    });
+  }
+
+  const assignBtn = document.getElementById('catAssignBtn');
+  if(assignBtn){
+    assignBtn.onclick = ()=>{
+      const item = norm(document.getElementById('catAssignInput').value);
+      const cat = select.value;
+      if(!item) return;
+      setCategoryOverride(item, cat);
+      document.getElementById('catAssignInput').value = '';
+      renderCatOverridesUI();
+      renderShoppingPanel();
+    };
+  }
+}
+
 function renderCustomRecipesList(){
   const el = document.getElementById('customRecipesList');
   if(!el) return;
@@ -2875,12 +3057,13 @@ function renderCustomRecipesList(){
   el.querySelectorAll('.del-custom-btn').forEach(btn=>{
     btn.onclick = ()=>{
       const name = btn.dataset.name;
-      if(!confirm(`למחוק את "${name}"?`)) return;
-      customRecipes = customRecipes.filter(r=>r.name!==name);
-      localStorage.setItem('custom_recipes', JSON.stringify(customRecipes));
-      const idx = RECIPES.findIndex(r=>r.name===name);
-      if(idx>-1) RECIPES.splice(idx,1);
-      renderAll();
+      showConfirmModal(`למחוק את "${name}"?`, ()=>{
+        customRecipes = customRecipes.filter(r=>r.name!==name);
+        localStorage.setItem('custom_recipes', JSON.stringify(customRecipes));
+        const idx = RECIPES.findIndex(r=>r.name===name);
+        if(idx>-1) RECIPES.splice(idx,1);
+        renderAll();
+      });
     };
   });
 }
