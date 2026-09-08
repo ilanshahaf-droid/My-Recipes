@@ -2,7 +2,7 @@
   "name": "מה יש במקרר?",
   "short_name": "במקרר",
   "description": "נהלו את המקרר שלכם, קבלו הצעות למתכונים, ונהלו רשימות קניות משותפות",
-  "start_url": "./fridge-app.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

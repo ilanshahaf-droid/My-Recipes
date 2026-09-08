@@ -1,6 +1,6 @@
 const CACHE_NAME = 'fridge-app-v1';
 const APP_SHELL = [
-  './fridge-app.html',
+  './index.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
