@@ -1,0 +1,18 @@
+{
+  "name": "מה יש במקרר?",
+  "short_name": "במקרר",
+  "description": "נהלו את המקרר שלכם, קבלו הצעות למתכונים, ונהלו רשימות קניות משותפות",
+  "start_url": "./fridge-app.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F6F3EA",
+  "theme_color": "#F6F3EA",
+  "dir": "rtl",
+  "lang": "he",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="theme-color" content="#F6F3EA">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>מה יש במקרר?</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -696,7 +699,7 @@
   }
   .cook-step-text{
     font-family:'Frank Ruhl Libre',serif;
-    font-size:22px;
+    font-size:28px;
     line-height:1.5;
     margin-bottom:24px;
   }
@@ -704,15 +707,15 @@
     background:var(--surface);
     border:1px solid var(--line);
     border-radius:16px;
-    padding:16px;
+    padding:14px;
     text-align:center;
     margin-bottom:24px;
   }
   .cook-timer-display{
-    font-size:42px;
+    font-size:26px;
     font-weight:700;
     font-variant-numeric:tabular-nums;
-    margin:8px 0;
+    margin:6px 0;
   }
   .cook-timer-btns{
     display:flex;
@@ -816,6 +819,43 @@
     justify-content:center;
     padding:0 3px;
   }
+
+  .list-switcher{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-bottom:14px;
+  }
+  .list-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    border:1px solid var(--line);
+    background:var(--surface);
+    color:var(--ink-soft);
+    padding:8px 14px;
+    border-radius:100px;
+    font-size:13.5px;
+    font-weight:600;
+    cursor:pointer;
+    font-family:'Assistant',sans-serif;
+  }
+  .list-chip.active{
+    background:var(--ink);
+    border-color:var(--ink);
+    color:var(--paper);
+  }
+  .list-chip-add{
+    background:none;
+    border:1px dashed var(--line);
+    color:var(--ink-soft);
+  }
+  .list-chip-x{
+    font-size:14px;
+    opacity:.7;
+    padding:0 2px;
+  }
+  .list-chip-x:hover{opacity:1;}
 
   .sync-box{
     background:var(--herb-soft);
@@ -1518,7 +1558,35 @@ const RECIPES = [
   {name:"עוף בקארי צהוב עם אורז", time:"35 דק׳", healthy:true, difficulty:"קל", cuisine:"הודי", ingredients:["עוף","בצל","גזר","קארי","חלב קוקוס","אורז","מלח"],
    steps:["מטגנים בצל וגזר בשמן זית עד שמתרככים","מוסיפים קארי ומערבבים כדקה עד שמפיץ ריח","מוסיפים חתיכות עוף ומטגנים כ-8 דקות","יוצקים חלב קוקוס ומבשלים כ-15 דקות, מגישים עם אורז לבן מבושל"]},
   {name:"סלט עדשים חמים עם לימון", time:"35 דק׳", healthy:true, difficulty:"קל", cuisine:"בריא", ingredients:["עדשים","בצל","שום","לימון","שמן זית","פטרוזיליה","מלח"],
-   steps:["מבשלים עדשים במים עד שמתרככות אך שומרות על צורתן, מסננים","מטגנים בצל ושום בשמן זית עד להזהבה","מערבבים את העדשים עם הבצל המטוגן, מיץ לימון ופטרוזיליה קצוצה","מתבלים במלח ומגישים פושר או קר"]}
+   steps:["מבשלים עדשים במים עד שמתרככות אך שומרות על צורתן, מסננים","מטגנים בצל ושום בשמן זית עד להזהבה","מערבבים את העדשים עם הבצל המטוגן, מיץ לימון ופטרוזיליה קצוצה","מתבלים במלח ומגישים פושר או קר"]},
+  {name:"סלמון אפוי בלימון ותימין", time:"25 דק׳", healthy:true, difficulty:"קל", cuisine:"בריא", ingredients:["סלמון","לימון","שמן זית","תימין","מלח","פלפל שחור"],
+   steps:["מניחים את פילה הסלמון בתבנית מרופדת ומברישים בשמן זית","מפזרים מלח, פלפל ועלי תימין ומניחים פרוסות לימון מעל","אופים בתנור שחומם ל-200 מעלות כ-15-18 דקות עד שהדג מתפרק בקלות במזלג"]},
+  {name:"נודלס מוקפצים עם ירקות ורוטב סויה", time:"20 דק׳", difficulty:"קל", cuisine:"אסייתי", ingredients:["נודלס","גזר","פלפל","בצל","רוטב סויה","שמן זית","שום"],
+   steps:["מבשלים נודלס לפי ההוראות על האריזה ומסננים","מטגנים שום ובצל בשמן זית על אש גבוהה, מוסיפים גזר ופלפל פרוסים דק","מקפיצים כדקה, מוסיפים את הנודלס ורוטב סויה","מקפיצים הכל יחד כדקתיים ומגישים חם"]},
+  {name:"מרק במיה בעגבניות", time:"40 דק׳", healthy:true, difficulty:"קל", cuisine:"ים-תיכוני", ingredients:["במיה","עגבניות","בצל","שום","שמן זית","מלח"],
+   steps:["מטגנים בצל ושום בשמן זית עד להזהבה","מוסיפים עגבניות קצוצות ומבשלים לרוטב סמיך כ-10 דקות","מוסיפים במיה שלמה ומבשלים מכוסה על אש נמוכה כ-25 דקות עד שמתרככת","מתבלים במלח ומגישים עם אורז"]},
+  {name:"בבא גנוש", time:"40 דק׳", healthy:true, difficulty:"קל", cuisine:"ים-תיכוני", ingredients:["חציל","טחינה","לימון","שום","מלח","שמן זית"],
+   steps:["צולים חציל שלם ישירות על להבה או בתנור חם עד שהקליפה משחירה והבשר רך לגמרי","מוציאים את הבשר מהקליפה ומועכים במזלג","מערבבים עם טחינה גולמית, מיץ לימון ושום כתוש עד לתערובת אחידה","מתבלים במלח ומגישים עם שמן זית מעל"]},
+  {name:"שקשוקה לבנה בגבינות", time:"15 דק׳", difficulty:"קל", cuisine:"ישראלי", ingredients:["ביצים","גבינה צהובה","גבינת שמנת","שמנת מתוקה","שום","מלח"],
+   steps:["מחממים שמנת מתוקה בסיר עם שום כתוש עד לפני רתיחה","מערבבים פנימה גבינת שמנת עד שנמסה לרוטב חלק","יוצרים גומחות ושוברים לתוכן ביצים, מפזרים גבינה צהובה מגוררת","מכסים ומבשלים על אש נמוכה עד שהביצים מוכנות לטעמכם"]},
+  {name:"פיתה עם חומוס וסלט מהיר", time:"10 דק׳", healthy:true, difficulty:"קל", cuisine:"ים-תיכוני", ingredients:["פיתות","חומוס","עגבניות","מלפפונים","שמן זית","לימון","מלח"],
+   steps:["קוצצים עגבניות ומלפפונים לסלט קטן ומתבלים בשמן זית, לימון ומלח","פותחים פיתה חמה ומורחים בה חומוס בנדיבות","ממלאים בסלט וסוגרים"]},
+  {name:"כרובית קלויה בטחינה", time:"35 דק׳", healthy:true, difficulty:"קל", cuisine:"ים-תיכוני", ingredients:["כרובית","שמן זית","טחינה","לימון","שום","מלח","כמון"],
+   steps:["מחלקים כרובית לפרחים ומברישים בשמן זית, מלח וכמון","אופים בתנור חם (200 מעלות) כ-25 דקות עד שמזהיבה בקצוות","מכינים רוטב טחינה מטחינה גולמית, מיץ לימון, שום כתוש ומים","יוצקים את הטחינה מעל הכרובית החמה ומגישים"]},
+  {name:"עוף בדבש וחרדל", time:"40 דק׳", difficulty:"קל", cuisine:"כללי", ingredients:["עוף","דבש","חרדל","שמן זית","מלח","פלפל שחור"],
+   steps:["מערבבים דבש, חרדל, שמן זית, מלח ופלפל לרוטב אחיד","מורחים את הרוטב על נתחי העוף ומניחים בתבנית","אופים בתנור שחומם ל-190 מעלות כ-30-35 דקות, הופכים באמצע, עד שהעוף שחום ועסיסי"]},
+  {name:"סלט תרד עם תותים ואגוזי מלך", time:"10 דק׳", healthy:true, difficulty:"קל", cuisine:"בריא", ingredients:["תרד","תותים","אגוזי מלך","שמן זית","לימון","דבש"],
+   steps:["שוטפים עלי תרד טריים ומניחים בקערת הגשה","חוצים תותים ומפזרים מעל יחד עם אגוזי מלך קלויים","מכינים רוטב מהיר משמן זית, מיץ לימון ודבש, ומזלפים לפני ההגשה"]},
+  {name:"מרק גריסים ושעועית לבנה", time:"60 דק׳", healthy:true, difficulty:"בינוני", cuisine:"כללי", ingredients:["גריסים","שעועית לבנה","בצל","גזר","סלרי","שמן זית","מלח"],
+   steps:["מטגנים בצל, גזר וסלרי קצוצים בשמן זית עד שמתרככים","מוסיפים גריסים, שעועית לבנה ומים ומביאים לרתיחה","מנמיכים אש ומבשלים מכוסה כ-45 דקות תוך ערבוב מדי פעם, עד שהגריסים רכים","מתבלים במלח ומגישים חם"]},
+  {name:"פסטה עם נקניקיות ברוטב עגבניות", time:"30 דק׳", difficulty:"קל", cuisine:"איטלקי", ingredients:["נקניקיות","עגבניות","בצל","שום","פסטה","שמן זית","מלח"],
+   steps:["פורסים נקניקיות לעיגולים ומטגנים במחבת עד שמזהיבות, מוציאים לצד","באותה מחבת מטגנים בצל ושום בשמן זית, מוסיפים עגבניות ומבשלים לרוטב","מחזירים את הנקניקיות לרוטב ומבשלים עוד כמה דקות","מבשלים פסטה בנפרד ומערבבים לתוך הרוטב, מתבלים במלח"]},
+  {name:"טוסט אבוקדו וביצה קשה", time:"10 דק׳", healthy:true, difficulty:"קל", cuisine:"בריא", ingredients:["לחם","אבוקדו","ביצים","לימון","מלח","פלפל שחור"],
+   steps:["מבשלים ביצה קשה במים רותחים כ-9 דקות ומצננים במים קרים","קולים פרוסת לחם ומורחים עליה אבוקדו מרוסק עם מיץ לימון, מלח ופלפל","פורסים את הביצה הקשה ומניחים מעל"]},
+  {name:"פנקייק בננה ושיבולת שועל", time:"15 דק׳", healthy:true, difficulty:"קל", cuisine:"בריא", ingredients:["בננה","שיבולת שועל","ביצים","קינמון","דבש"],
+   steps:["מועכים בננה בשלה במזלג עד לקבלת מחית","מערבבים פנימה ביצים, שיבולת שועל וקינמון לבלילה אחידה","אופים כפות בלילה על מחבת חמה משומנת קלות עד להזהבה משני הצדדים","מגישים עם מעט דבש מעל"]},
+  {name:"סלט בורגול עם עגבניות ופטרוזיליה", time:"25 דק׳", healthy:true, difficulty:"קל", cuisine:"ים-תיכוני", ingredients:["בורגול","עגבניות","פטרוזיליה","לימון","שמן זית","מלח","בצל"],
+   steps:["שורים בורגול במים חמים כ-15 דקות עד שמתרכך, מסננים היטב מעודף נוזלים","קוצצים עגבניות, פטרוזיליה ובצל דק ומערבבים עם הבורגול","מתבלים בשמן זית, מיץ לימון ומלח ומערבבים היטב"]}
 ];
 
 // Recipes imported by the user via Settings → Import (persisted separately, merged in)
@@ -1534,15 +1602,31 @@ function minutesOf(r){ const m = r.time.match(/\d+/); return m? parseInt(m[0]) :
 let fridge = new Set(JSON.parse(localStorage.getItem('fridge_items')||'[]'));
 let cookedSet = new Set(JSON.parse(localStorage.getItem('cooked_recipes')||'[]'));
 let cookHistory = JSON.parse(localStorage.getItem('cook_history')||'{}'); // {name: [iso dates]}
-let shoppingList = new Set(JSON.parse(localStorage.getItem('shopping_list')||'[]'));
-let boughtItems = new Set(JSON.parse(localStorage.getItem('bought_items')||'[]'));
+let shoppingLists = JSON.parse(localStorage.getItem('shopping_lists')||'null');
+if(!shoppingLists){
+  // Migrate from the old single-list storage format
+  shoppingLists = {
+    main: {
+      name: 'רשימה ראשית',
+      items: JSON.parse(localStorage.getItem('shopping_list')||'[]'),
+      bought: JSON.parse(localStorage.getItem('bought_items')||'[]'),
+      syncCode: localStorage.getItem('sync_code') || null
+    }
+  };
+  localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
+}
+let activeListId = localStorage.getItem('active_shopping_list') || 'main';
+if(!shoppingLists[activeListId]) activeListId = 'main';
+function getActiveList(){ return shoppingLists[activeListId]; }
+let shoppingList = new Set(getActiveList().items||[]);
+let boughtItems = new Set(getActiveList().bought||[]);
 let favorites = new Set(JSON.parse(localStorage.getItem('favorites')||'[]'));
 let filters = { search:'', diet:'all', maxTime:0, almostReady:false, hideCooked:false, favoritesOnly:false, cuisine:'all', difficulty:'all' };
 let isDark = localStorage.getItem('theme') === 'dark';
 let showCheckedShop = false;
 const SUPABASE_URL = 'https://pznpibrlcbjpcoxagxns.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6bnBpYnJsY2JqcGNveGFneG5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5NjEzMjUsImV4cCI6MjEwMjUzNzMyNX0.dvfKlGyI1U_E7G5POQJkLn28gky7cTyJbQqT3Mie_YU';
-let syncCode = localStorage.getItem('sync_code') || null;
+let syncCode = getActiveList().syncCode || null;
 let ranOutMode = false;
 const WEEK_DAYS = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
 let weeklyPlan = JSON.parse(localStorage.getItem('weekly_plan')||'{}');
@@ -1584,8 +1668,77 @@ function renderAutocomplete(containerId, query, onPick){
 function saveFridge(){ localStorage.setItem('fridge_items', JSON.stringify([...fridge])); }
 function saveCooked(){ localStorage.setItem('cooked_recipes', JSON.stringify([...cookedSet])); }
 function saveCookHistory(){ localStorage.setItem('cook_history', JSON.stringify(cookHistory)); }
-function saveShoppingList(){ localStorage.setItem('shopping_list', JSON.stringify([...shoppingList])); pushSync(); }
-function saveBought(){ localStorage.setItem('bought_items', JSON.stringify([...boughtItems])); pushSync(); }
+function saveShoppingList(){
+  getActiveList().items = [...shoppingList];
+  localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
+  pushSync();
+}
+function saveBought(){
+  getActiveList().bought = [...boughtItems];
+  localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
+  pushSync();
+}
+function switchShoppingList(id){
+  if(!shoppingLists[id] || id === activeListId) return;
+  // persist current list's live state before switching away
+  getActiveList().items = [...shoppingList];
+  getActiveList().bought = [...boughtItems];
+  localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
+
+  activeListId = id;
+  localStorage.setItem('active_shopping_list', id);
+  shoppingList = new Set(getActiveList().items||[]);
+  boughtItems = new Set(getActiveList().bought||[]);
+  syncCode = getActiveList().syncCode || null;
+  renderShoppingPanel();
+  renderTabBadges();
+}
+function createShoppingList(){
+  const name = prompt('שם הרשימה החדשה:');
+  if(!name || !norm(name)) return;
+  const id = 'list_' + Date.now();
+  shoppingLists[id] = {name: norm(name), items: [], bought: [], syncCode: null};
+  localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
+  switchShoppingList(id);
+}
+function deleteShoppingList(id){
+  if(id === 'main') return;
+  if(!confirm(`למחוק את הרשימה "${shoppingLists[id].name}"? הפעולה לא הפיכה.`)) return;
+  delete shoppingLists[id];
+  localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
+  if(activeListId === id) switchShoppingList('main');
+  else renderShoppingPanel();
+}
+function renderListSwitcher(){
+  const chips = Object.entries(shoppingLists).map(([id,list])=>{
+    const active = id === activeListId;
+    return `
+      <button type="button" class="list-chip${active?' active':''}" data-id="${id}">
+        ${list.name}${id!=='main' ? `<span class="list-chip-x" data-id="${id}">×</span>` : ''}
+      </button>`;
+  }).join('');
+  return `
+    <div class="list-switcher">
+      ${chips}
+      <button type="button" class="list-chip list-chip-add" id="addListBtn">+ רשימה חדשה</button>
+    </div>`;
+}
+function wireListSwitcher(){
+  document.querySelectorAll('.list-chip[data-id]').forEach(btn=>{
+    btn.onclick = (e)=>{
+      if(e.target.classList.contains('list-chip-x')) return; // handled separately
+      switchShoppingList(btn.dataset.id);
+    };
+  });
+  document.querySelectorAll('.list-chip-x').forEach(x=>{
+    x.onclick = (e)=>{
+      e.stopPropagation();
+      deleteShoppingList(x.dataset.id);
+    };
+  });
+  const addBtn = document.getElementById('addListBtn');
+  if(addBtn) addBtn.onclick = createShoppingList;
+}
 function saveFavorites(){ localStorage.setItem('favorites', JSON.stringify([...favorites])); }
 
 // ——— Cross-device shopping list sync (via your Supabase project) ———
@@ -1627,8 +1780,9 @@ async function pullSync(){
     if(!rows.length) return;
     shoppingList = new Set(rows[0].items||[]);
     boughtItems = new Set(rows[0].bought||[]);
-    localStorage.setItem('shopping_list', JSON.stringify([...shoppingList]));
-    localStorage.setItem('bought_items', JSON.stringify([...boughtItems]));
+    getActiveList().items = [...shoppingList];
+    getActiveList().bought = [...boughtItems];
+    localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
     renderShoppingPanel();
     renderTabBadges();
   }catch(e){ /* offline, or sync service unreachable */ }
@@ -1664,7 +1818,8 @@ function wireSyncBox(){
     try{
       const code = await createSyncBucket();
       syncCode = code;
-      localStorage.setItem('sync_code', code);
+      getActiveList().syncCode = code;
+      localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
       await pushSync();
     }catch(e){ alert('לא הצלחנו ליצור סנכרון כרגע (' + e.message + '). ודאו חיבור לאינטרנט ונסו שוב, או השתמשו בינתיים ב"קוד שיתוף" הידני למטה.'); }
     renderShoppingPanel();
@@ -1689,7 +1844,8 @@ function wireSyncBox(){
       return;
     }
     syncCode = code;
-    localStorage.setItem('sync_code', code);
+    getActiveList().syncCode = code;
+    localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
     await pullSync();
     renderShoppingPanel();
   };
@@ -1703,7 +1859,8 @@ function wireSyncBox(){
   if(stopBtn) stopBtn.onclick = ()=>{
     if(!confirm('להפסיק את הסנכרון במכשיר הזה? (הרשימה תישאר מקומית)')) return;
     syncCode = null;
-    localStorage.removeItem('sync_code');
+    getActiveList().syncCode = null;
+    localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
     renderShoppingPanel();
   };
 }
@@ -2232,8 +2389,8 @@ function renderDailyRecipe(){
 function renderShoppingPanel(){
   const el = document.getElementById('shoppingPanel');
 
-  // Always show sync box + toolbar for adding
-  let html = renderSyncBoxHTML() + `
+  // List switcher + sync box + toolbar for adding
+  let html = renderListSwitcher() + renderSyncBoxHTML() + `
     <div class="shop-toolbar">
       <input type="text" id="shopAddInput" placeholder="הוסיפו פריט לרשימה...">
       <button class="icon-btn" id="shopVoiceBtn" title="דיבור">🎤</button>
@@ -2251,6 +2408,7 @@ function renderShoppingPanel(){
       </div>
     `;
     el.innerHTML = html;
+    wireListSwitcher();
     wireSyncBox();
     wireShopToolbar();
     wireShopFooterEmpty();
@@ -2302,6 +2460,7 @@ function renderShoppingPanel(){
     </div>
   `;
   el.innerHTML = html;
+  wireListSwitcher();
   wireSyncBox();
   wireShopToolbar();
 
@@ -2596,7 +2755,11 @@ function renderTabBadges(){
   } else if(fridgeBadge){ fridgeBadge.remove(); }
 
   let shopBadge = shopBtn.querySelector('.tab-badge');
-  const unbought = [...shoppingList].filter(i=>!boughtItems.has(i)).length;
+  const unbought = Object.entries(shoppingLists).reduce((sum,[id,list])=>{
+    const items = id === activeListId ? [...shoppingList] : (list.items||[]);
+    const bought = id === activeListId ? boughtItems : new Set(list.bought||[]);
+    return sum + items.filter(i=>!bought.has(i)).length;
+  }, 0);
   if(unbought > 0){
     if(!shopBadge){ shopBadge = document.createElement('span'); shopBadge.className='tab-badge'; shopBtn.appendChild(shopBadge); }
     shopBadge.textContent = unbought;
@@ -2629,7 +2792,7 @@ document.getElementById('themeBtn').onclick = ()=>{
   applyTheme();
 };
 
-async function startVoiceInput(onResult, attempt){
+function startVoiceInput(onResult, attempt){
   attempt = attempt || 0;
   if(location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1'){
     alert('זיהוי קול דורש חיבור מאובטח (HTTPS). האתר צריך להיות מתארח בכתובת https (למשל דרך Netlify) — לא נפתח כקובץ מקומי במכשיר.');
@@ -2640,15 +2803,9 @@ async function startVoiceInput(onResult, attempt){
     alert('זיהוי דיבור לא נתמך בדפדפן הזה (נסו Chrome באנדרואיד/מחשב)');
     return;
   }
-  if(attempt === 0 && navigator.permissions && navigator.permissions.query){
-    try{
-      const status = await navigator.permissions.query({name:'microphone'});
-      if(status.state === 'denied'){
-        alert('הגישה למיקרופון חסומה עבור האתר הזה. פתחו את הגדרות האתר בדפדפן (הסמל ליד שורת הכתובת) ואפשרו הרשאת מיקרופון, ואז נסו שוב.');
-        return;
-      }
-    }catch(e){ /* permission query not supported for microphone on this browser — proceed anyway */ }
-  }
+  // IMPORTANT: rec.start() must run synchronously inside the click handler with no
+  // preceding "await" — otherwise the browser can silently drop the required user-gesture
+  // context and abort the recognition. Any diagnostics happen only in onerror, after the fact.
   const rec = new SR();
   rec.lang = 'he-IL';
   rec.interimResults = false;
@@ -3058,24 +3215,15 @@ applyTheme();
 renderCatTabs();
 renderAll();
 
-// PWA manifest
-try{
-  const manifest = {
-    name: "מה יש במקרר?",
-    short_name: "במקרר",
-    start_url: ".",
-    display: "standalone",
-    background_color: "#F6F3EA",
-    theme_color: "#F6F3EA",
-    icons: []
-  };
-  const manifestBlob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
-  const manifestURL = URL.createObjectURL(manifestBlob);
-  const link = document.createElement('link');
-  link.rel = 'manifest';
-  link.href = manifestURL;
-  document.head.appendChild(link);
-}catch(e){}
+// Register the service worker for offline support and real installability.
+// Requires service-worker.js (and manifest.json + icons) to be hosted in the same folder as this file.
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('service-worker.js').catch(()=>{
+      // Missing file is fine — the app still works fully online, just without offline caching / install prompt.
+    });
+  });
+}
 </script>
 </body>
 </html>
