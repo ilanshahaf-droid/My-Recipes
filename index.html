@@ -100,6 +100,7 @@
     display:flex;
     align-items:center;
     justify-content:space-between;
+    flex-wrap:wrap;
     gap:10px;
   }
   .fridge-count{
@@ -109,6 +110,7 @@
   .fridge-count b{color:var(--ink); font-weight:700;}
   .fridge-actions{
     display:flex;
+    flex-wrap:wrap;
     gap:14px;
   }
   .fridge-actions button{
@@ -143,6 +145,39 @@
     flex-wrap:wrap;
     gap:8px;
     padding-bottom:4px;
+  }
+  .clearcat-panel{
+    display:none;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px;
+    margin-top:10px;
+  }
+  .clearcat-panel.open{display:block;}
+  .clearcat-grid{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px 16px;
+    margin-bottom:14px;
+  }
+  .clearcat-item{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:13.5px;
+    cursor:pointer;
+  }
+  #clearCatGoBtn{
+    border:none;
+    background:var(--brick);
+    color:#fff;
+    padding:9px 16px;
+    border-radius:10px;
+    font-size:13.5px;
+    font-weight:700;
+    cursor:pointer;
+    font-family:'Assistant',sans-serif;
   }
   .chip{
     display:inline-flex;
@@ -1356,6 +1391,15 @@
       </div>
       <div id="catOverridesList"></div>
     </section>
+    <section>
+      <h2>איפוס יומי של המקרר</h2>
+      <p class="settings-hint">כשמופעל, קטגוריות שאינן מוגנות יתאפסו אוטומטית פעם ביום (בפעם הראשונה שפותחים את האפליקציה באותו יום).</p>
+      <label class="clearcat-item" style="margin-bottom:12px;">
+        <input type="checkbox" id="autoResetToggle"> הפעילו איפוס יומי אוטומטי
+      </label>
+      <div class="settings-hint" style="margin-bottom:8px; font-weight:700;">קטגוריות מוגנות (לא יתאפסו):</div>
+      <div class="clearcat-grid" id="protectedCatsGrid"></div>
+    </section>
   </div>
 
   <footer class="hint">הנתונים נשמרים במכשיר שלכם בלבד · חלק מהמתכונים בהשראת heli-group.co.il</footer>
@@ -1442,6 +1486,18 @@ function catOf(item){ return categoryOverrides[item] || ING_TO_CAT[item] || 'א�
 function setCategoryOverride(item, cat){
   if(cat) categoryOverrides[item] = cat; else delete categoryOverrides[item];
   localStorage.setItem('category_overrides', JSON.stringify(categoryOverrides));
+}
+
+let autoResetEnabled = localStorage.getItem('auto_reset_enabled') === '1';
+let protectedCategories = JSON.parse(localStorage.getItem('protected_categories')||'["מזווה","תיבול ואפייה"]');
+function checkDailyFridgeReset(){
+  if(!autoResetEnabled) return;
+  const today = new Date().toDateString();
+  const last = localStorage.getItem('last_fridge_reset');
+  if(last === today) return;
+  [...fridge].forEach(item=>{ if(!protectedCategories.includes(catOf(item))) fridge.delete(item); });
+  saveFridge();
+  localStorage.setItem('last_fridge_reset', today);
 }
 
 const ING_EMOJI = {
@@ -2030,9 +2086,19 @@ function applyTheme(){
 }
 
 let fridgeExpanded = false;
+let clearByCatOpen = false;
 
 function renderFridgeStrip(){
   const wrap = document.getElementById('fridgeSummaryWrap');
+  const catCheckboxes = Object.keys(CATALOG).concat(['אחר']).map(cat=>`
+    <label class="clearcat-item"><input type="checkbox" value="${cat}"> ${cat}</label>
+  `).join('');
+  const clearCatPanel = `
+    <div class="clearcat-panel${clearByCatOpen?' open':''}" id="clearCatPanel">
+      <div class="clearcat-grid">${catCheckboxes}</div>
+      <button id="clearCatGoBtn">נקו את הקטגוריות שנבחרו</button>
+    </div>`;
+
   if(fridge.size === 0){
     wrap.innerHTML = '<div class="fridge-empty">המקרר עדיין ריק — התחילו לסמן למטה</div>';
     return;
@@ -2042,12 +2108,14 @@ function renderFridgeStrip(){
       <span class="fridge-count">יש לכם <b>${fridge.size}</b> מצרכים</span>
       <div class="fridge-actions">
         <button id="toggleFridgeBtn">${fridgeExpanded?'הסתר':'הצג'}</button>
+        <button id="clearByCatBtn">נקו לפי קטגוריה</button>
         <button class="clear-btn" id="clearFridgeBtn">נקה הכל</button>
       </div>
     </div>
     <div class="fridge-panel${fridgeExpanded?' open':''}" id="fridgePanel">
       <div class="fridge-panel-inner" id="fridgePanelInner"></div>
     </div>
+    ${clearCatPanel}
   `;
   const inner = document.getElementById('fridgePanelInner');
   [...fridge].forEach(item=>{
@@ -2080,6 +2148,21 @@ function renderFridgeStrip(){
     saveFridge();
     renderAll();
   };
+  document.getElementById('clearByCatBtn').onclick = ()=>{
+    clearByCatOpen = !clearByCatOpen;
+    renderFridgeStrip();
+  };
+  const goBtn = document.getElementById('clearCatGoBtn');
+  if(goBtn){
+    goBtn.onclick = ()=>{
+      const checked = [...document.querySelectorAll('#clearCatPanel input:checked')].map(cb=>cb.value);
+      if(checked.length===0) return;
+      [...fridge].forEach(item=>{ if(checked.includes(catOf(item))) fridge.delete(item); });
+      saveFridge();
+      clearByCatOpen = false;
+      renderAll();
+    };
+  }
 }
 
 let activeCat = Object.keys(CATALOG)[0];
@@ -2870,6 +2953,7 @@ function renderAll(){
   renderWeekPlan();
   renderCustomRecipesList();
   renderCatOverridesUI();
+  renderAutoResetSettings();
 }
 
 let activeTab = localStorage.getItem('active_tab') || 'fridge';
@@ -3001,6 +3085,27 @@ document.getElementById('searchInput').addEventListener('input', (e)=>{
 });
 
 // ——— Import recipes from Word/PDF files ———
+function renderAutoResetSettings(){
+  const toggle = document.getElementById('autoResetToggle');
+  const grid = document.getElementById('protectedCatsGrid');
+  if(!toggle || !grid) return;
+  toggle.checked = autoResetEnabled;
+  const cats = Object.keys(CATALOG).concat(['אחר']);
+  grid.innerHTML = cats.map(c=>`
+    <label class="clearcat-item"><input type="checkbox" value="${c}" ${protectedCategories.includes(c)?'checked':''}> ${c}</label>
+  `).join('');
+  toggle.onchange = ()=>{
+    autoResetEnabled = toggle.checked;
+    localStorage.setItem('auto_reset_enabled', autoResetEnabled ? '1' : '0');
+  };
+  grid.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+    cb.onchange = ()=>{
+      protectedCategories = [...grid.querySelectorAll('input:checked')].map(c=>c.value);
+      localStorage.setItem('protected_categories', JSON.stringify(protectedCategories));
+    };
+  });
+}
+
 function renderCatOverridesUI(){
   const select = document.getElementById('catAssignSelect');
   if(!select) return;
@@ -3395,6 +3500,7 @@ async function openBarcodeScanner(){
 document.getElementById('barcodeCloseBtn').onclick = stopBarcodeScanner;
 
 applyTheme();
+checkDailyFridgeReset();
 renderCatTabs();
 renderAll();
 
