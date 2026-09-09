@@ -1383,10 +1383,11 @@
     </section>
     <section>
       <h2>סיווג מצרכים</h2>
-      <p class="settings-hint">קבעו לאיזו קטגוריה ישויך מצרך ברשימת הקניות (למשל "גבינה בולגרית" תחת "מוצרי חלב"). זה משפיע על הקיבוץ ברשימת הקניות בלבד.</p>
+      <p class="settings-hint">קבעו לאיזו קטגוריה ישויך מצרך ברשימת הקניות, ואפשר גם לתת לו אייקון משלכם (למשל "גבינה בולגרית" ← מוצרי חלב 🧀).</p>
       <div class="add-row">
         <input type="text" id="catAssignInput" placeholder="שם המצרך...">
         <select id="catAssignSelect" class="week-select" style="flex:1 1 140px;"></select>
+        <input type="text" id="catAssignIcon" placeholder="אייקון (אימוג׳י)" style="flex:0 1 130px; border:1px solid var(--line); border-radius:10px; padding:8px 10px; font-size:15px; text-align:center; background:var(--surface);">
         <button id="catAssignBtn">שמרו</button>
       </div>
       <div id="catOverridesList"></div>
@@ -1399,6 +1400,11 @@
       </label>
       <div class="settings-hint" style="margin-bottom:8px; font-weight:700;">קטגוריות מוגנות (לא יתאפסו):</div>
       <div class="clearcat-grid" id="protectedCatsGrid"></div>
+    </section>
+    <section>
+      <h2>מה לימדתם את המערכת</h2>
+      <p class="settings-hint">כל פעם שתיקנתם זיהוי מצלמה או ברקוד, המערכת זוכרת את זה לפעם הבאה. אפשר לנקות פריטים שנלמדו בטעות.</p>
+      <div id="learnedList"></div>
     </section>
   </div>
 
@@ -1486,6 +1492,12 @@ function catOf(item){ return categoryOverrides[item] || ING_TO_CAT[item] || 'א�
 function setCategoryOverride(item, cat){
   if(cat) categoryOverrides[item] = cat; else delete categoryOverrides[item];
   localStorage.setItem('category_overrides', JSON.stringify(categoryOverrides));
+}
+let iconOverrides = JSON.parse(localStorage.getItem('icon_overrides')||'{}');
+function iconOf(item){ return iconOverrides[item] || ING_EMOJI[item] || '🛒'; }
+function setIconOverride(item, icon){
+  if(icon) iconOverrides[item] = icon; else delete iconOverrides[item];
+  localStorage.setItem('icon_overrides', JSON.stringify(iconOverrides));
 }
 
 let autoResetEnabled = localStorage.getItem('auto_reset_enabled') === '1';
@@ -1995,11 +2007,16 @@ function renderSyncBoxHTML(){
       <div class="sync-row"><span class="sync-status">📵 לא מסונכרן בין מכשירים</span></div>
       <div class="sync-setup">
         <button id="syncCreateBtn">צרו סנכרון חדש</button>
-        <input type="text" id="syncJoinInput" placeholder="או הדביקו קוד ממכשיר/מחשב אחר...">
+        <input type="text" id="syncJoinInput" placeholder="הדביקו קוד, או את כל הודעת הוואטסאפ...">
         <button id="syncJoinBtn">הצטרפו</button>
       </div>
     </div>`;
 }
+function extractSyncCode(text){
+  const match = text.match(/\b[0-9A-Z]{6}\b/);
+  return match ? match[0] : norm(text).toUpperCase();
+}
+
 function wireSyncBox(){
   const createBtn = document.getElementById('syncCreateBtn');
   if(createBtn) createBtn.onclick = async ()=>{
@@ -2016,7 +2033,7 @@ function wireSyncBox(){
   const joinBtn = document.getElementById('syncJoinBtn');
   if(joinBtn) joinBtn.onclick = async ()=>{
     const input = document.getElementById('syncJoinInput');
-    const code = norm(input.value).toUpperCase();
+    const code = extractSyncCode(input.value.toUpperCase());
     if(!code) return;
     joinBtn.disabled = true; joinBtn.textContent = 'בודק...';
     try{
@@ -2044,7 +2061,8 @@ function wireSyncBox(){
   };
   const waBtn = document.getElementById('syncWhatsappBtn');
   if(waBtn) waBtn.onclick = ()=>{
-    const text = `בואו נסנכרן את רשימת הקניות "${getActiveList().name}" — פתחו את האפליקציה, לכו ל"קניות" ולחצו "הצטרפו" עם הקוד: ${syncCode}`;
+    const text = `בואו נסנכרן את רשימת הקניות "${getActiveList().name}" 🛒\nפתחו את האפליקציה ← "קניות" ← "הצטרפו", ותדביקו את הקוד הזה:\n\n${syncCode}`;
+    if(navigator.clipboard) navigator.clipboard.writeText(syncCode).catch(()=>{});
     window.open('https://wa.me/?text='+encodeURIComponent(text), '_blank');
   };
   const refreshBtn = document.getElementById('syncRefreshBtn');
@@ -2616,7 +2634,6 @@ function renderShoppingPanel(){
   let html = renderListSwitcher() + renderSyncBoxHTML() + `
     <div class="shop-toolbar">
       <input type="text" id="shopAddInput" placeholder="הוסיפו פריט לרשימה...">
-      <button class="icon-btn" id="shopVoiceBtn" title="דיבור">🎤</button>
       <button id="shopAddBtn">הוספה</button>
     </div>
     <div class="autocomplete-row" id="shopAutocomplete"></div>
@@ -2654,7 +2671,7 @@ function renderShoppingPanel(){
     html += `<div class="shop-group"><div class="shop-group-title">${cat}</div>`;
     groups[cat].sort((a,b)=>a.localeCompare(b,'he')).forEach(item=>{
       const bought = boughtItems.has(item);
-      const emoji = ING_EMOJI[item] || '🛒';
+      const emoji = iconOf(item);
       html += `
         <div class="shop-item ${bought?'bought':''}" data-item="${item}">
           <div class="shop-check">${bought?'✓':''}</div>
@@ -2785,14 +2802,6 @@ function wireShopToolbar(){
         input.value = name;
         add();
       });
-    });
-  }
-
-  const voiceBtn = document.getElementById('shopVoiceBtn');
-  if(voiceBtn){
-    voiceBtn.onclick = ()=> startVoiceInput(text=>{
-      document.getElementById('shopAddInput').value = text;
-      add();
     });
   }
 }
@@ -2954,6 +2963,7 @@ function renderAll(){
   renderCustomRecipesList();
   renderCatOverridesUI();
   renderAutoResetSettings();
+  renderLearnedList();
 }
 
 let activeTab = localStorage.getItem('active_tab') || 'fridge';
@@ -3018,46 +3028,6 @@ document.getElementById('themeBtn').onclick = ()=>{
   applyTheme();
 };
 
-function startVoiceInput(onResult, attempt){
-  attempt = attempt || 0;
-  if(location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1'){
-    alert('זיהוי קול דורש חיבור מאובטח (HTTPS). האתר צריך להיות מתארח בכתובת https (למשל דרך Netlify) — לא נפתח כקובץ מקומי במכשיר.');
-    return;
-  }
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if(!SR){
-    alert('זיהוי דיבור לא נתמך בדפדפן הזה (נסו Chrome באנדרואיד/מחשב)');
-    return;
-  }
-  // IMPORTANT: rec.start() must run synchronously inside the click handler with no
-  // preceding "await" — otherwise the browser can silently drop the required user-gesture
-  // context and abort the recognition. Any diagnostics happen only in onerror, after the fact.
-  const rec = new SR();
-  rec.lang = 'he-IL';
-  rec.interimResults = false;
-  rec.maxAlternatives = 1;
-  rec.onresult = (ev)=>{
-    const text = ev.results[0][0].transcript;
-    if(text) onResult(norm(text));
-  };
-  rec.onerror = (ev)=>{
-    if(ev.error === 'aborted' && attempt < 2){
-      // Can happen right after the mic permission prompt, or transiently on some Android/Chrome builds — retry a couple of times
-      setTimeout(()=> startVoiceInput(onResult, attempt+1), 500);
-      return;
-    }
-    const reasons = {
-      'not-allowed': 'הגישה למיקרופון נחסמה. בדקו בהגדרות האתר של הדפדפן (הסמל ליד שורת הכתובת) שהרשאת המיקרופון מאושרת, ושהמיקרופון לא מושתק ברמת המכשיר.',
-      'no-speech': 'לא זוהה דיבור. נסו שוב וקצת יותר קרוב למיקרופון.',
-      'audio-capture': 'לא נמצא מיקרופון זמין במכשיר.',
-      'network': 'בעיית רשת בזיהוי הדיבור. ודאו חיבור לאינטרנט ונסו שוב.',
-      'aborted': 'זיהוי הדיבור ממשיך להיכשל במכשיר הזה — לרוב זו תקלה ברמת מערכת ההפעלה/דפדפן ולא קשורה לאתר. אפשר להמשיך להקליד; ההשלמה האוטומטית תעזור.'
-    };
-    alert(reasons[ev.error] || ('שגיאת זיהוי דיבור: ' + ev.error));
-  };
-  try{ rec.start(); }catch(e){ alert('לא ניתן להפעיל מיקרופון כרגע'); }
-}
-
 document.getElementById('customAddBtn').onclick = ()=>{
   const input = document.getElementById('customInput');
   const val = norm(input.value);
@@ -3085,6 +3055,31 @@ document.getElementById('searchInput').addEventListener('input', (e)=>{
 });
 
 // ——— Import recipes from Word/PDF files ———
+function renderLearnedList(){
+  const el = document.getElementById('learnedList');
+  if(!el) return;
+  const labelEntries = Object.entries(learnedLabels).map(([label,name])=>({type:'label', key:label, name}));
+  const barcodeEntries = Object.entries(learnedBarcodes).map(([code,name])=>({type:'barcode', key:code, name}));
+  const all = [...labelEntries, ...barcodeEntries];
+  if(all.length===0){
+    el.innerHTML = '<p class="custom-empty">עדיין לא תיקנתם זיהוי כלשהו</p>';
+    return;
+  }
+  el.innerHTML = all.map(e=>`
+    <div class="custom-recipe-row">
+      <span>${e.type==='barcode' ? '🔖 ברקוד ' + e.key : '📷 ' + e.key} ← ${e.name}</span>
+      <button data-type="${e.type}" data-key="${e.key}" class="del-learned-btn">מחקו</button>
+    </div>
+  `).join('');
+  el.querySelectorAll('.del-learned-btn').forEach(btn=>{
+    btn.onclick = ()=>{
+      if(btn.dataset.type==='label'){ delete learnedLabels[btn.dataset.key]; localStorage.setItem('learned_labels', JSON.stringify(learnedLabels)); }
+      else { delete learnedBarcodes[btn.dataset.key]; localStorage.setItem('learned_barcodes', JSON.stringify(learnedBarcodes)); }
+      renderLearnedList();
+    };
+  });
+}
+
 function renderAutoResetSettings(){
   const toggle = document.getElementById('autoResetToggle');
   const grid = document.getElementById('protectedCatsGrid');
@@ -3113,19 +3108,20 @@ function renderCatOverridesUI(){
   select.innerHTML = cats.map(c=>`<option value="${c}">${c}</option>`).join('');
 
   const listEl = document.getElementById('catOverridesList');
-  const entries = Object.entries(categoryOverrides);
-  if(entries.length===0){
+  const items = [...new Set([...Object.keys(categoryOverrides), ...Object.keys(iconOverrides)])];
+  if(items.length===0){
     listEl.innerHTML = '<p class="custom-empty">עדיין לא הגדרתם סיווגים מותאמים אישית</p>';
   } else {
-    listEl.innerHTML = entries.map(([item,cat])=>`
+    listEl.innerHTML = items.map(item=>`
       <div class="custom-recipe-row">
-        <span>${item} ← ${cat}</span>
+        <span>${iconOf(item)} ${item} ← ${catOf(item)}</span>
         <button data-item="${item}" class="del-cat-btn">מחקו</button>
       </div>
     `).join('');
     listEl.querySelectorAll('.del-cat-btn').forEach(btn=>{
       btn.onclick = ()=>{
         setCategoryOverride(btn.dataset.item, null);
+        setIconOverride(btn.dataset.item, null);
         renderCatOverridesUI();
         renderShoppingPanel();
       };
@@ -3137,9 +3133,12 @@ function renderCatOverridesUI(){
     assignBtn.onclick = ()=>{
       const item = norm(document.getElementById('catAssignInput').value);
       const cat = select.value;
+      const icon = norm(document.getElementById('catAssignIcon').value);
       if(!item) return;
       setCategoryOverride(item, cat);
+      if(icon) setIconOverride(item, icon);
       document.getElementById('catAssignInput').value = '';
+      document.getElementById('catAssignIcon').value = '';
       renderCatOverridesUI();
       renderShoppingPanel();
     };
@@ -3299,10 +3298,21 @@ const IMAGENET_TO_HEBREW = [
 ];
 function guessHebrewFromLabel(label){
   const lower = label.toLowerCase();
+  if(learnedLabels[lower]) return learnedLabels[lower];
   for(const [keys, heb] of IMAGENET_TO_HEBREW){
     if(keys.some(k=>lower.includes(k))) return heb;
   }
   return null;
+}
+let learnedLabels = JSON.parse(localStorage.getItem('learned_labels')||'{}');
+function teachLabel(label, hebrewName){
+  learnedLabels[label.toLowerCase()] = hebrewName;
+  localStorage.setItem('learned_labels', JSON.stringify(learnedLabels));
+}
+let learnedBarcodes = JSON.parse(localStorage.getItem('learned_barcodes')||'{}');
+function teachBarcode(code, name){
+  learnedBarcodes[code] = name;
+  localStorage.setItem('learned_barcodes', JSON.stringify(learnedBarcodes));
 }
 let mobilenetModel = null;
 let mobilenetLoading = null;
@@ -3341,6 +3351,7 @@ async function classifyAndAdd(file){
     await new Promise((res,rej)=>{ img.onload=res; img.onerror=rej; img.src=url; });
     const predictions = await model.classify(img);
     URL.revokeObjectURL(url);
+    const topLabel = predictions[0] ? predictions[0].className.toLowerCase() : '';
     let matched = null;
     for(const p of predictions){
       matched = guessHebrewFromLabel(p.className);
@@ -3350,40 +3361,44 @@ async function classifyAndAdd(file){
       fridge.add(matched);
       saveFridge();
       renderAll();
-      setCamStatus(`✓ זיהינו ${matched} והוספנו למקרר`);
-    } else {
-      const guess = predictions[0] ? predictions[0].className.split(',')[0] : '';
-      setCamStatus('');
-      const name = prompt('לא זיהינו בוודאות מצרך מוכר (ניחוש המערכת: ' + guess + '). הקלידו את שם המצרך:', '');
-      if(name && norm(name)){
-        fridge.add(norm(name));
-        saveFridge();
-        renderAll();
-      }
+      const statusEl = document.getElementById('camStatus');
+      statusEl.innerHTML = `✓ זיהינו ${matched} והוספנו למקרר · <a href="#" id="fixLabelLink">לא נכון? תקנו</a>`;
+      document.getElementById('fixLabelLink').onclick = (e)=>{
+        e.preventDefault();
+        showPromptModal('מה זה באמת? (נלמד את זה לפעם הבאה)', (name)=>{
+          fridge.delete(matched);
+          fridge.add(name);
+          saveFridge();
+          teachLabel(topLabel, name);
+          renderAll();
+          setCamStatus(`✓ עודכן ל-${name} — נזכור בפעם הבאה`);
+          setTimeout(()=>setCamStatus(''), 4000);
+        }, matched);
+      };
+      return;
     }
+    const guess = predictions[0] ? predictions[0].className.split(',')[0] : '';
+    setCamStatus('');
+    showPromptModal('לא זיהינו בוודאות מצרך מוכר (ניחוש המערכת: ' + guess + '). הקלידו את שם המצרך:', (name)=>{
+      fridge.add(name);
+      saveFridge();
+      teachLabel(topLabel, name);
+      renderAll();
+      setCamStatus('✓ נשמר — נזכור את זה בפעם הבאה');
+      setTimeout(()=>setCamStatus(''), 4000);
+    });
   }catch(e){
     setCamStatus('');
-    const name = prompt('זיהוי התמונה נכשל. הקלידו את שם המצרך שצולם:');
-    if(name && norm(name)){
-      fridge.add(norm(name));
+    showPromptModal('זיהוי התמונה נכשל. הקלידו את שם המצרך שצולם:', (name)=>{
+      fridge.add(name);
       saveFridge();
       renderAll();
-    }
+    });
   }
-  setTimeout(()=>setCamStatus(''), 4000);
 }
 (function enhanceAddRow(){
   const row = document.querySelector('.add-row');
   if(!row) return;
-  const voiceBtn = document.createElement('button');
-  voiceBtn.type = 'button';
-  voiceBtn.textContent = '🎤';
-  voiceBtn.title = 'הוספה בקול';
-  voiceBtn.style.cssText = 'border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:0 12px;font-size:18px;cursor:pointer;';
-  voiceBtn.onclick = ()=> startVoiceInput(text=>{
-    document.getElementById('customInput').value = text;
-    document.getElementById('customAddBtn').click();
-  });
 
   const camBtn = document.createElement('button');
   camBtn.type = 'button';
@@ -3409,7 +3424,6 @@ async function classifyAndAdd(file){
   barcodeBtn.style.cssText = 'border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:0 12px;font-size:18px;cursor:pointer;';
   barcodeBtn.onclick = openBarcodeScanner;
 
-  row.insertBefore(voiceBtn, row.lastElementChild);
   row.insertBefore(camBtn, row.lastElementChild);
   row.insertBefore(barcodeBtn, row.lastElementChild);
   row.appendChild(fileInput);
@@ -3430,6 +3444,16 @@ function stopBarcodeScanner(){
 
 async function lookupBarcode(code){
   const hint = document.getElementById('barcodeHint');
+
+  if(learnedBarcodes[code]){
+    fridge.add(learnedBarcodes[code]);
+    recordUsage(learnedBarcodes[code]);
+    saveFridge();
+    renderAll();
+    stopBarcodeScanner();
+    return;
+  }
+
   hint.textContent = 'מחפשים את המוצר...';
   try{
     const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json`);
@@ -3437,21 +3461,45 @@ async function lookupBarcode(code){
     if(data.status === 1 && data.product){
       const name = data.product.product_name_he || data.product.product_name || data.product.generic_name || null;
       if(name){
-        fridge.add(norm(name));
-        recordUsage(norm(name));
+        const cleanName = norm(name);
+        fridge.add(cleanName);
+        recordUsage(cleanName);
         saveFridge();
         renderAll();
         stopBarcodeScanner();
+        setCamStatus(`✓ זיהינו ${cleanName} מברקוד והוספנו למקרר · <a href="#" id="fixBarcodeLink">לא נכון? תקנו</a>`);
+        document.getElementById('fixBarcodeLink').onclick = (e)=>{
+          e.preventDefault();
+          showPromptModal('מה זה באמת? (נלמד את זה לפעם הבאה)', (fixedName)=>{
+            fridge.delete(cleanName);
+            fridge.add(fixedName);
+            saveFridge();
+            teachBarcode(code, fixedName);
+            renderAll();
+            setCamStatus(`✓ עודכן ל-${fixedName} — נזכור בפעם הבאה`);
+            setTimeout(()=>setCamStatus(''), 4000);
+          }, cleanName);
+        };
         return;
       }
     }
     stopBarcodeScanner();
-    const manual = prompt(`לא מצאנו את המוצר במאגר (ברקוד ${code}). הקלידו את שם המוצר:`, '');
-    if(manual && norm(manual)){ fridge.add(norm(manual)); recordUsage(norm(manual)); saveFridge(); renderAll(); }
+    showPromptModal(`לא מצאנו את המוצר במאגר (ברקוד ${code}). הקלידו את שם המוצר — נזכור אותו לפעם הבאה:`, (name)=>{
+      fridge.add(name);
+      recordUsage(name);
+      saveFridge();
+      teachBarcode(code, name);
+      renderAll();
+    });
   }catch(e){
     stopBarcodeScanner();
-    const manual = prompt(`שגיאה בחיפוש המוצר (ברקוד ${code}). הקלידו את שם המוצר:`, '');
-    if(manual && norm(manual)){ fridge.add(norm(manual)); recordUsage(norm(manual)); saveFridge(); renderAll(); }
+    showPromptModal(`שגיאה בחיפוש המוצר (ברקוד ${code}). הקלידו את שם המוצר — נזכור אותו לפעם הבאה:`, (name)=>{
+      fridge.add(name);
+      recordUsage(name);
+      saveFridge();
+      teachBarcode(code, name);
+      renderAll();
+    });
   }
 }
 
