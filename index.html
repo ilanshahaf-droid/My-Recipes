@@ -674,6 +674,7 @@
   }
   .ing-pill.have{background:var(--herb-soft); color:var(--herb); border-color:transparent;}
   .ing-pill.miss{background:var(--brick-soft); color:var(--brick); border-color:transparent;}
+  .ing-qty{opacity:.7; font-weight:400;}
   .steps{
     margin:0;
     padding-inline-start:20px;
@@ -740,23 +741,51 @@
     line-height:1.5;
     margin-bottom:24px;
   }
+  .cook-ing-list{
+    font-family:'Assistant',sans-serif;
+  }
+  .cook-ing-row{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:16px 2px;
+    border-bottom:1px solid var(--line);
+  }
+  .cook-ing-row:last-child{border-bottom:none;}
+  .cook-ing-dot{
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    flex-shrink:0;
+  }
+  .cook-ing-dot.have{background:var(--herb);}
+  .cook-ing-dot.miss{background:var(--brick);}
+  .cook-ing-text{
+    font-size:20px;
+    line-height:1.4;
+  }
   .cook-timer-box{
     background:var(--surface);
     border:1px solid var(--line);
-    border-radius:16px;
-    padding:14px;
+    border-radius:14px;
+    padding:10px 14px;
     text-align:center;
     margin-bottom:24px;
   }
+  .cook-timer-box .cook-timer-label{
+    font-size:11.5px;
+    color:var(--ink-soft);
+    font-weight:600;
+  }
   .cook-timer-display{
-    font-size:26px;
+    font-size:19px;
     font-weight:700;
     font-variant-numeric:tabular-nums;
-    margin:6px 0;
+    margin:2px 0;
   }
   .cook-timer-btns{
     display:flex;
-    gap:10px;
+    gap:6px;
     justify-content:center;
     flex-wrap:wrap;
   }
@@ -764,9 +793,9 @@
     border:1px solid var(--line);
     background:var(--paper);
     color:var(--ink);
-    padding:8px 14px;
-    border-radius:10px;
-    font-size:13px;
+    padding:5px 10px;
+    border-radius:8px;
+    font-size:11.5px;
     font-weight:600;
     cursor:pointer;
     font-family:'Assistant',sans-serif;
@@ -1457,7 +1486,7 @@
   <div class="cook-step-num" id="cookStepNum"></div>
   <div class="cook-step-text" id="cookStepText"></div>
   <div class="cook-timer-box">
-    <div style="font-size:13px;color:var(--ink-soft);font-weight:600;">טיימר</div>
+    <div class="cook-timer-label">טיימר</div>
     <div class="cook-timer-display" id="cookTimerDisplay">00:00</div>
     <div class="cook-timer-btns">
       <button data-min="1">+1 דק׳</button>
@@ -1487,6 +1516,29 @@ const CATALOG = {
 // ingredient -> category map
 const ING_TO_CAT = {};
 Object.entries(CATALOG).forEach(([cat, items]) => items.forEach(i => ING_TO_CAT[i] = cat));
+
+// Typical default quantities per ingredient (assumes a standard ~4-serving home recipe).
+// Shown alongside ingredient names in recipe cards; not used for fridge/shopping matching.
+const DEFAULT_QTY = {
+  "עגבניות":"3 יחידות","מלפפונים":"2 יחידות","בצל":"1 יחידה","שום":"2 שיניים","גזר":"2 יחידות",
+  "פלפל":"1 יחידה","תפוחי אדמה":"3 יחידות","קישואים":"2 יחידות","חסה":"חצי ראש","כרוב":"רבע ראש",
+  "פטריות":"200 גרם","תרד":"200 גרם","בטטה":"2 יחידות","ברוקולי":"ראש אחד","אפונה קפואה":"כוס אחת",
+  "חציל":"1 יחידה","במיה":"250 גרם","תירס":"קופסת שימורים","כרובית":"ראש אחד","סלרי":"2 גבעולים","כוסברה":"חופן קצוץ",
+  "ביצים":"3 יחידות","עוף":"500 גרם","בשר טחון":"400 גרם","טונה":"קופסת שימורים","גבינה צהובה":"100 גרם",
+  "גבינה לבנה":"250 גרם","קוטג'":"250 גרם","טופו":"200 גרם","נקניקיות":"4 יחידות","מוצרלה":"150 גרם",
+  "סלמון":"400 גרם","שעועית לבנה":"קופסת שימורים","חומוס":"כוס מבושל","עדשים":"כוס אחת","שעועית אדומה":"קופסת שימורים",
+  "חלב":"כוס אחת","יוגורט":"כוס אחת","חמאה":"50 גרם","שמנת מתוקה":"200 מ\"ל","שמנת חמוצה":"200 גרם",
+  "גבינת שמנת":"200 גרם","פטה":"100 גרם","חלב קוקוס":"קופסה (400 מ\"ל)",
+  "אורז":"כוס אחת","פסטה":"300 גרם","לחם":"4 פרוסות","קמח":"כוס אחת","קינואה":"כוס אחת","בורגול":"כוס אחת",
+  "פיתות":"4 יחידות","נודלס":"200 גרם","שיבולת שועל":"כוס אחת","גריסים":"כוס אחת",
+  "שמן זית":"3 כפות","מלח":"לפי הטעם","פלפל שחור":"לפי הטעם","סוכר":"2 כפות","רוטב סויה":"2 כפות",
+  "טחינה":"3 כפות","חומץ":"כף אחת","דבש":"2 כפות","אבקת אפייה":"כפית אחת","חמאת בוטנים":"2 כפות",
+  "קארי":"כפית אחת","כמון":"כפית אחת","פפריקה":"כפית אחת","חרדל":"כף אחת","מיונז":"2 כפות",
+  "תפוח":"2 יחידות","בננה":"2 יחידות","לימון":"1 יחידה","ענבים":"כוס אחת","תותים":"כוס אחת","אבוקדו":"1 יחידה","תפוז":"1 יחידה",
+  "שומשום":"2 כפות","תימין":"כפית עלים","זעתר":"3 כפות","קינמון":"כפית אחת","צנוברים":"2 כפות",
+  "פירורי לחם":"חצי כוס","שמרים יבשים":"שקית (7 גרם)","חמוציות מיובשות":"שליש כוס","אגוזי מלך":"חצי כוס"
+};
+function qtyOf(item){ return DEFAULT_QTY[item] || ''; }
 let categoryOverrides = JSON.parse(localStorage.getItem('category_overrides')||'{}');
 function catOf(item){ return categoryOverrides[item] || ING_TO_CAT[item] || 'אחר'; }
 function setCategoryOverride(item, cat){
@@ -2488,7 +2540,8 @@ function renderRecipes(){
               const avail = SUBSTITUTES[i].filter(s=>fridge.has(s));
               if(avail.length) extra = ` → ${avail[0]}`;
             }
-            return `<span class="ing-pill ${have?'have':'miss'}">${i}${extra}</span>`;
+            const qty = qtyOf(i);
+            return `<span class="ing-pill ${have?'have':'miss'}">${i}${qty?` <span class="ing-qty">(${qty})</span>`:''}${extra}</span>`;
           }).join('')}
         </div>
         <h4>הוראות הכנה</h4>
@@ -2614,7 +2667,10 @@ function renderDailyRecipe(){
     <div class="recipe-body">
       <h4>מצרכים</h4>
       <div class="ing-list">
-        ${r.ingredients.map(i=>`<span class="ing-pill ${fridge.has(i)?'have':'miss'}">${i}</span>`).join('')}
+        ${r.ingredients.map(i=>{
+          const qty = qtyOf(i);
+          return `<span class="ing-pill ${fridge.has(i)?'have':'miss'}">${i}${qty?` <span class="ing-qty">(${qty})</span>`:''}</span>`;
+        }).join('')}
       </div>
       <h4>הוראות הכנה</h4>
       <ol class="steps">${r.steps.map(s=>`<li>${s}</li>`).join('')}</ol>
@@ -2869,12 +2925,29 @@ function closeCookMode(){
 function renderCookStep(){
   const r = cookState.recipe;
   if(!r) return;
-  const total = r.steps.length;
+  const total = r.steps.length + 1; // +1 for the ingredients overview step
   const idx = cookState.step;
   document.getElementById('cookTitle').textContent = r.name;
-  document.getElementById('cookStepNum').textContent = `שלב ${idx+1} מתוך ${total}`;
-  document.getElementById('cookStepText').textContent = r.steps[idx];
   document.getElementById('cookProgressBar').style.width = ((idx+1)/total*100)+'%';
+
+  const stepTextEl = document.getElementById('cookStepText');
+  if(idx === 0){
+    document.getElementById('cookStepNum').textContent = 'מצרכים';
+    stepTextEl.innerHTML = `<div class="cook-ing-list">${
+      r.ingredients.map(i=>{
+        const have = fridge.has(i);
+        const qty = qtyOf(i);
+        return `
+          <div class="cook-ing-row">
+            <span class="cook-ing-dot ${have?'have':'miss'}"></span>
+            <span class="cook-ing-text">${qty ? qty+' ' : ''}${i}</span>
+          </div>`;
+      }).join('')
+    }</div>`;
+  } else {
+    document.getElementById('cookStepNum').textContent = `שלב ${idx} מתוך ${r.steps.length}`;
+    stepTextEl.textContent = r.steps[idx-1];
+  }
 
   const prevBtn = document.getElementById('cookPrevBtn');
   const nextBtn = document.getElementById('cookNextBtn');
@@ -2885,7 +2958,7 @@ function renderCookStep(){
     nextBtn.textContent = 'סיימתי! ✓';
     nextBtn.className = 'done';
   } else {
-    nextBtn.textContent = 'הבא';
+    nextBtn.textContent = idx===0 ? 'בואו נתחיל' : 'הבא';
     nextBtn.className = 'next';
   }
 }
@@ -2932,7 +3005,8 @@ document.getElementById('cookPrevBtn').onclick = ()=>{
 };
 document.getElementById('cookNextBtn').onclick = ()=>{
   const r = cookState.recipe;
-  if(cookState.step < r.steps.length-1){
+  const total = r.steps.length + 1;
+  if(cookState.step < total-1){
     cookState.step++;
     renderCookStep();
   } else {
