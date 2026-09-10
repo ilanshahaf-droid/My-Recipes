@@ -729,15 +729,36 @@
     background:var(--herb);
     transition:width .3s;
   }
+  .cook-step-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:8px;
+  }
   .cook-step-num{
-    font-size:13px;
+    font-size:14px;
     font-weight:700;
     color:var(--herb);
-    margin-bottom:8px;
+  }
+  .cook-speak-btn{
+    border:1px solid var(--line);
+    background:var(--surface);
+    color:var(--ink);
+    padding:6px 12px;
+    border-radius:100px;
+    font-size:12.5px;
+    font-weight:600;
+    cursor:pointer;
+    font-family:'Assistant',sans-serif;
+  }
+  .cook-speak-btn.speaking{
+    background:var(--herb);
+    border-color:var(--herb);
+    color:#fff;
   }
   .cook-step-text{
     font-family:'Frank Ruhl Libre',serif;
-    font-size:28px;
+    font-size:34px;
     line-height:1.5;
     margin-bottom:24px;
   }
@@ -750,8 +771,29 @@
     gap:14px;
     padding:16px 2px;
     border-bottom:1px solid var(--line);
+    cursor:pointer;
   }
   .cook-ing-row:last-child{border-bottom:none;}
+  .cook-ing-row.used .cook-ing-text{
+    text-decoration:line-through;
+    opacity:.45;
+  }
+  .cook-ing-check{
+    width:24px;
+    height:24px;
+    border-radius:7px;
+    border:2px solid var(--line);
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:15px;
+    color:#fff;
+  }
+  .cook-ing-row.used .cook-ing-check{
+    background:var(--herb);
+    border-color:var(--herb);
+  }
   .cook-ing-dot{
     width:10px;
     height:10px;
@@ -761,7 +803,7 @@
   .cook-ing-dot.have{background:var(--herb);}
   .cook-ing-dot.miss{background:var(--brick);}
   .cook-ing-text{
-    font-size:20px;
+    font-size:23px;
     line-height:1.4;
   }
   .cook-timer-box{
@@ -1483,7 +1525,10 @@
     <button class="cook-close" id="cookCloseBtn">סגור</button>
   </div>
   <div class="cook-progress"><div class="cook-progress-bar" id="cookProgressBar"></div></div>
-  <div class="cook-step-num" id="cookStepNum"></div>
+  <div class="cook-step-row">
+    <div class="cook-step-num" id="cookStepNum"></div>
+    <button class="cook-speak-btn" id="cookSpeakBtn">🔊 הקריאו</button>
+  </div>
   <div class="cook-step-text" id="cookStepText"></div>
   <div class="cook-timer-box">
     <div class="cook-timer-label">טיימר</div>
@@ -2906,25 +2951,77 @@ function shareShoppingCode(){
 }
 
 // ——— Cooking Mode ———
-let cookState = { recipe:null, step:0, timerSec:0, timerInterval:null, running:false };
+let cookState = { recipe:null, step:0, timerSec:0, timerInterval:null, running:false, usedIngredients:new Set(), wakeLock:null };
+
+async function acquireWakeLock(){
+  try{
+    if('wakeLock' in navigator){
+      cookState.wakeLock = await navigator.wakeLock.request('screen');
+    }
+  }catch(e){ /* wake lock not available or denied — cooking still works, screen may just dim on its own */ }
+}
+function releaseWakeLock(){
+  if(cookState.wakeLock){
+    cookState.wakeLock.release().catch(()=>{});
+    cookState.wakeLock = null;
+  }
+}
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible' && cookState.recipe) acquireWakeLock();
+});
+
+function stopSpeaking(){
+  if('speechSynthesis' in window) window.speechSynthesis.cancel();
+  const btn = document.getElementById('cookSpeakBtn');
+  if(btn){ btn.classList.remove('speaking'); btn.textContent = '🔊 הקריאו'; }
+}
+function toggleSpeak(){
+  if(!('speechSynthesis' in window)){
+    alert('הקראה קולית לא נתמכת בדפדפן הזה');
+    return;
+  }
+  const btn = document.getElementById('cookSpeakBtn');
+  if(window.speechSynthesis.speaking){
+    stopSpeaking();
+    return;
+  }
+  const r = cookState.recipe;
+  const idx = cookState.step;
+  const text = idx === 0
+    ? 'מצרכים: ' + r.ingredients.map(i=>{ const q = qtyOf(i); return (q?q+' ':'') + i; }).join(', ')
+    : r.steps[idx-1];
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'he-IL';
+  utter.onend = stopSpeaking;
+  utter.onerror = stopSpeaking;
+  window.speechSynthesis.speak(utter);
+  btn.classList.add('speaking');
+  btn.textContent = '⏹ עצירה';
+}
+document.getElementById('cookSpeakBtn').onclick = toggleSpeak;
 
 function openCookMode(r){
   cookState.recipe = r;
   cookState.step = 0;
+  cookState.usedIngredients = new Set();
   resetTimer();
   document.getElementById('cookOverlay').classList.add('active');
+  acquireWakeLock();
   renderCookStep();
 }
 
 function closeCookMode(){
   document.getElementById('cookOverlay').classList.remove('active');
   stopTimer();
+  stopSpeaking();
+  releaseWakeLock();
   cookState.recipe = null;
 }
 
 function renderCookStep(){
   const r = cookState.recipe;
   if(!r) return;
+  stopSpeaking();
   const total = r.steps.length + 1; // +1 for the ingredients overview step
   const idx = cookState.step;
   document.getElementById('cookTitle').textContent = r.name;
@@ -2937,13 +3034,23 @@ function renderCookStep(){
       r.ingredients.map(i=>{
         const have = fridge.has(i);
         const qty = qtyOf(i);
+        const used = cookState.usedIngredients.has(i);
         return `
-          <div class="cook-ing-row">
+          <div class="cook-ing-row${used?' used':''}" data-ing="${i}">
+            <span class="cook-ing-check">${used?'✓':''}</span>
             <span class="cook-ing-dot ${have?'have':'miss'}"></span>
             <span class="cook-ing-text">${qty ? qty+' ' : ''}${i}</span>
           </div>`;
       }).join('')
     }</div>`;
+    stepTextEl.querySelectorAll('.cook-ing-row').forEach(row=>{
+      row.onclick = ()=>{
+        const ing = row.dataset.ing;
+        if(cookState.usedIngredients.has(ing)) cookState.usedIngredients.delete(ing);
+        else cookState.usedIngredients.add(ing);
+        renderCookStep();
+      };
+    });
   } else {
     document.getElementById('cookStepNum').textContent = `שלב ${idx} מתוך ${r.steps.length}`;
     stepTextEl.textContent = r.steps[idx-1];
