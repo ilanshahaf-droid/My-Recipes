@@ -1450,6 +1450,7 @@
     </section>
     <section>
       <h2>מתכונים שיובאו</h2>
+      <div id="recipeSyncBox"></div>
       <div id="customRecipesList"></div>
     </section>
     <section>
@@ -2083,6 +2084,136 @@ async function pullSync(){
     renderShoppingPanel();
     renderTabBadges();
   }catch(e){ /* offline, or sync service unreachable */ }
+}
+
+// ——— Cross-device recipe sync (imported/custom recipes, via the same Supabase project) ———
+let recipeSyncCode = localStorage.getItem('recipe_sync_code') || null;
+async function createRecipeSyncBucket(){
+  const code = Math.random().toString(36).slice(2,8).toUpperCase();
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/recipe_sync`, {
+    method:'POST',
+    headers: supaHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
+    body: JSON.stringify([{code, recipes: customRecipes, updated_at:new Date().toISOString()}])
+  });
+  if(!res.ok) throw new Error('create failed: ' + res.status);
+  return code;
+}
+async function pushRecipeSync(){
+  if(!recipeSyncCode) return;
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/recipe_sync?on_conflict=code`, {
+      method:'POST',
+      headers: supaHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
+      body: JSON.stringify([{code:recipeSyncCode, recipes: customRecipes, updated_at:new Date().toISOString()}])
+    });
+  }catch(e){ /* offline, or sync service unreachable — will retry on next change */ }
+}
+async function pullRecipeSync(){
+  if(!recipeSyncCode) return;
+  try{
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/recipe_sync?code=eq.${recipeSyncCode}&select=recipes`, {
+      headers: supaHeaders()
+    });
+    if(!res.ok) return;
+    const rows = await res.json();
+    if(!rows.length) return;
+    customRecipes.forEach(r=>{
+      const idx = RECIPES.findIndex(x=>x.name===r.name);
+      if(idx>-1) RECIPES.splice(idx,1);
+    });
+    customRecipes = rows[0].recipes || [];
+    localStorage.setItem('custom_recipes', JSON.stringify(customRecipes));
+    RECIPES.push(...customRecipes);
+    renderAll();
+  }catch(e){ /* offline, or sync service unreachable */ }
+}
+function renderRecipeSyncBoxHTML(){
+  if(recipeSyncCode){
+    return `
+      <div class="sync-box">
+        <div class="sync-row">
+          <span class="sync-status">🔄 מסונכרן · קוד: <b>${recipeSyncCode}</b></span>
+          <div class="sync-actions">
+            <button id="recSyncCopyBtn">העתקה</button>
+            <button id="recSyncWhatsappBtn">💬 וואטסאפ</button>
+            <button id="recSyncRefreshBtn">רענון</button>
+            <button id="recSyncStopBtn">ניתוק</button>
+          </div>
+        </div>
+      </div>`;
+  }
+  return `
+    <div class="sync-box">
+      <div class="sync-row"><span class="sync-status">📵 המתכונים שלכם לא מסונכרנים בין מכשירים</span></div>
+      <div class="sync-setup">
+        <button id="recSyncCreateBtn">צרו סנכרון חדש</button>
+        <input type="text" id="recSyncJoinInput" placeholder="הדביקו קוד ממכשיר אחר...">
+        <button id="recSyncJoinBtn">הצטרפו</button>
+      </div>
+    </div>`;
+}
+function wireRecipeSyncBox(){
+  const createBtn = document.getElementById('recSyncCreateBtn');
+  if(createBtn) createBtn.onclick = async ()=>{
+    createBtn.disabled = true; createBtn.textContent = 'יוצר...';
+    try{
+      const code = await createRecipeSyncBucket();
+      recipeSyncCode = code;
+      localStorage.setItem('recipe_sync_code', code);
+      await pushRecipeSync();
+    }catch(e){ alert('לא הצלחנו ליצור סנכרון כרגע (' + e.message + '). ודאו חיבור לאינטרנט ונסו שוב.'); }
+    renderRecipeSyncSection();
+  };
+  const joinBtn = document.getElementById('recSyncJoinBtn');
+  if(joinBtn) joinBtn.onclick = async ()=>{
+    const input = document.getElementById('recSyncJoinInput');
+    const code = extractSyncCode(input.value.toUpperCase());
+    if(!code) return;
+    joinBtn.disabled = true; joinBtn.textContent = 'בודק...';
+    try{
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/recipe_sync?code=eq.${code}&select=code`, {headers: supaHeaders()});
+      const rows = await res.json();
+      if(!res.ok || rows.length===0){
+        alert('קוד לא נמצא. ודאו שהעתקתם אותו נכון מהמכשיר השני.');
+        joinBtn.disabled = false; joinBtn.textContent = 'הצטרפו';
+        return;
+      }
+    }catch(e){
+      alert('שגיאה בבדיקת הקוד. ודאו חיבור לאינטרנט ונסו שוב.');
+      joinBtn.disabled = false; joinBtn.textContent = 'הצטרפו';
+      return;
+    }
+    recipeSyncCode = code;
+    localStorage.setItem('recipe_sync_code', code);
+    await pullRecipeSync();
+    renderRecipeSyncSection();
+  };
+  const copyBtn = document.getElementById('recSyncCopyBtn');
+  if(copyBtn) copyBtn.onclick = ()=>{
+    if(navigator.clipboard) navigator.clipboard.writeText(recipeSyncCode).then(()=>alert('הקוד הועתק')).catch(()=>{});
+  };
+  const waBtn = document.getElementById('recSyncWhatsappBtn');
+  if(waBtn) waBtn.onclick = ()=>{
+    const text = `בואו נסנכרן את המתכונים שיצרתי באפליקציה 📖\nפתחו את האפליקציה ← "הגדרות" ← "הצטרפו", ותדביקו את הקוד הזה:\n\n${recipeSyncCode}`;
+    if(navigator.clipboard) navigator.clipboard.writeText(recipeSyncCode).catch(()=>{});
+    window.open('https://wa.me/?text='+encodeURIComponent(text), '_blank');
+  };
+  const refreshBtn = document.getElementById('recSyncRefreshBtn');
+  if(refreshBtn) refreshBtn.onclick = ()=> pullRecipeSync();
+  const stopBtn = document.getElementById('recSyncStopBtn');
+  if(stopBtn) stopBtn.onclick = ()=>{
+    showConfirmModal('להפסיק את סנכרון המתכונים במכשיר הזה? (המתכונים יישארו מקומית)', ()=>{
+      recipeSyncCode = null;
+      localStorage.removeItem('recipe_sync_code');
+      renderRecipeSyncSection();
+    });
+  };
+}
+function renderRecipeSyncSection(){
+  const el = document.getElementById('recipeSyncBox');
+  if(!el) return;
+  el.innerHTML = renderRecipeSyncBoxHTML();
+  wireRecipeSyncBox();
 }
 function renderSyncBoxHTML(){
   if(syncCode){
@@ -3141,6 +3272,7 @@ function renderAll(){
   renderTabBadges();
   renderRanoutUI();
   renderWeekPlan();
+  renderRecipeSyncSection();
   renderCustomRecipesList();
   renderCatOverridesUI();
   renderAutoResetSettings();
@@ -3160,6 +3292,7 @@ function switchTab(name){
   });
   window.scrollTo(0,0);
   if(name === 'shopping') pullSync();
+  if(name === 'settings') pullRecipeSync();
 }
 
 function renderTabBadges(){
@@ -3347,6 +3480,7 @@ function renderCustomRecipesList(){
         localStorage.setItem('custom_recipes', JSON.stringify(customRecipes));
         const idx = RECIPES.findIndex(r=>r.name===name);
         if(idx>-1) RECIPES.splice(idx,1);
+        pushRecipeSync();
         renderAll();
       });
     };
@@ -3429,6 +3563,7 @@ function renderImportForm(parsed){
     customRecipes.push(recipe);
     localStorage.setItem('custom_recipes', JSON.stringify(customRecipes));
     RECIPES.push(recipe);
+    pushRecipeSync();
     el.innerHTML = '';
     document.getElementById('importStatus').textContent = `✓ "${name}" נשמר בהצלחה`;
     setTimeout(()=>{ document.getElementById('importStatus').textContent=''; }, 4000);
