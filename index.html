@@ -11,6 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
   :root{
     --paper:#F6F3EA;
@@ -986,6 +987,23 @@
     padding:12px 14px;
     margin-bottom:14px;
   }
+  .acct-input{
+    width:100%;
+    margin-bottom:8px;
+    padding:9px 12px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    font-family:'Assistant',sans-serif;
+    font-size:14px;
+    background:var(--surface);
+    color:var(--ink);
+  }
+  .acct-btn-row{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .acct-picker{margin-top:14px;}
   .sync-row{
     display:flex;
     align-items:center;
@@ -1441,6 +1459,11 @@
 
   <div class="tab-content" id="tab-settings">
     <section style="margin-top:16px;">
+      <h2>חשבון</h2>
+      <p class="settings-hint">התחברו עם אימייל וסיסמה כדי שהמקרר, רשימות הקניות והמתכונים שלכם יסתנכרנו אוטומטית לכל מכשיר שתתחברו בו — ואפשר לשתף אותם עם מישהו אחר שיש לו חשבון משלו.</p>
+      <div id="accountBox"></div>
+    </section>
+    <section>
       <h2>ייבוא מתכונים מקובץ</h2>
       <p class="settings-hint">טוענים קובץ Word (.docx) או PDF שמכיל מתכון אחד. המערכת תנסה לזהות כותרת, מצרכים והוראות הכנה — ותאפשר לכם לתקן לפני השמירה.</p>
       <input type="file" id="importFileInput" accept=".docx,.pdf" style="display:none;">
@@ -1893,6 +1916,225 @@ let isDark = localStorage.getItem('theme') === 'dark';
 let showCheckedShop = false;
 const SUPABASE_URL = 'https://pznpibrlcbjpcoxagxns.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6bnBpYnJsY2JqcGNveGFneG5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5NjEzMjUsImV4cCI6MjEwMjUzNzMyNX0.dvfKlGyI1U_E7G5POQJkLn28gky7cTyJbQqT3Mie_YU';
+
+// ——— Account system (Supabase Auth) — email/password login, cross-device sync, and sharing with other accounts ———
+const sbClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+let currentUser = null;
+let activeShoppingRowId = localStorage.getItem('active_shopping_row') || null;
+let activeRecipesRowId = localStorage.getItem('active_recipes_row') || null;
+let accountShoppingRows = [];
+let accountRecipeRows = [];
+
+async function fetchUserDataRows(kind){
+  if(!sbClient) return [];
+  const { data, error } = await sbClient.from('user_data').select('*').eq('kind', kind);
+  if(error){ console.error(error); return []; }
+  return data || [];
+}
+function applyShoppingRow(row){
+  activeShoppingRowId = row.id;
+  localStorage.setItem('active_shopping_row', row.id);
+  shoppingLists = (row.payload && Object.keys(row.payload).length) ? row.payload : {main:{name:'רשימה ראשית', items:[], bought:[], syncCode:null}};
+  activeListId = Object.keys(shoppingLists)[0];
+  localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
+  localStorage.setItem('active_shopping_list', activeListId);
+  shoppingList = new Set(getActiveList().items||[]);
+  boughtItems = new Set(getActiveList().bought||[]);
+}
+function applyRecipesRow(row){
+  activeRecipesRowId = row.id;
+  localStorage.setItem('active_recipes_row', row.id);
+  customRecipes.forEach(r=>{ const idx = RECIPES.findIndex(x=>x.name===r.name); if(idx>-1) RECIPES.splice(idx,1); });
+  customRecipes = row.payload || [];
+  localStorage.setItem('custom_recipes', JSON.stringify(customRecipes));
+  RECIPES.push(...customRecipes);
+}
+async function loadAccountData(){
+  accountShoppingRows = await fetchUserDataRows('shopping_lists');
+  let mine = accountShoppingRows.find(r=>r.owner_id === currentUser.id);
+  if(!mine){
+    const { data } = await sbClient.from('user_data').insert({
+      owner_id: currentUser.id, owner_email: currentUser.email, kind:'shopping_lists', payload: shoppingLists
+    }).select().single();
+    if(data){ mine = data; accountShoppingRows.push(mine); }
+  }
+  if(mine){
+    const activeId = (activeShoppingRowId && accountShoppingRows.find(r=>r.id===activeShoppingRowId)) ? activeShoppingRowId : mine.id;
+    applyShoppingRow(accountShoppingRows.find(r=>r.id===activeId));
+  }
+
+  accountRecipeRows = await fetchUserDataRows('custom_recipes');
+  let rmine = accountRecipeRows.find(r=>r.owner_id === currentUser.id);
+  if(!rmine){
+    const { data } = await sbClient.from('user_data').insert({
+      owner_id: currentUser.id, owner_email: currentUser.email, kind:'custom_recipes', payload: customRecipes
+    }).select().single();
+    if(data){ rmine = data; accountRecipeRows.push(rmine); }
+  }
+  if(rmine){
+    const ractiveId = (activeRecipesRowId && accountRecipeRows.find(r=>r.id===activeRecipesRowId)) ? activeRecipesRowId : rmine.id;
+    applyRecipesRow(accountRecipeRows.find(r=>r.id===ractiveId));
+  }
+  renderAll();
+}
+async function pushShoppingRow(){
+  if(!currentUser || !activeShoppingRowId || !sbClient) return;
+  try{
+    await sbClient.from('user_data').update({payload: shoppingLists, updated_at: new Date().toISOString()}).eq('id', activeShoppingRowId);
+  }catch(e){ /* offline — local copy is already saved */ }
+}
+async function pushRecipesRow(){
+  if(!currentUser || !activeRecipesRowId || !sbClient) return;
+  try{
+    await sbClient.from('user_data').update({payload: customRecipes, updated_at: new Date().toISOString()}).eq('id', activeRecipesRowId);
+  }catch(e){ /* offline — local copy is already saved */ }
+}
+async function shareRow(rowId, email){
+  const { data, error } = await sbClient.rpc('share_data_with_email', {row_id: rowId, target_email: email});
+  if(error) throw error;
+  return data;
+}
+async function doLogout(){
+  await sbClient.auth.signOut();
+  currentUser = null;
+  activeShoppingRowId = null;
+  activeRecipesRowId = null;
+  localStorage.removeItem('active_shopping_row');
+  localStorage.removeItem('active_recipes_row');
+  renderAccountBox();
+}
+function renderAccountBox(){
+  const el = document.getElementById('accountBox');
+  if(!el) return;
+  if(!sbClient){
+    el.innerHTML = '<p class="custom-empty">טעינת מודול ההתחברות נכשלה — בדקו חיבור לאינטרנט ורעננו את הדף.</p>';
+    return;
+  }
+  if(!currentUser){
+    el.innerHTML = `
+      <div class="sync-box">
+        <input type="email" id="acctEmail" placeholder="אימייל" class="acct-input">
+        <input type="password" id="acctPassword" placeholder="סיסמה (לפחות 6 תווים)" class="acct-input">
+        <div class="acct-btn-row">
+          <button id="acctLoginBtn">התחברות</button>
+          <button id="acctSignupBtn">הרשמה</button>
+          <button id="acctForgotBtn" class="secondary">שכחתי סיסמה</button>
+        </div>
+        <div class="cam-status" id="acctStatus"></div>
+      </div>`;
+    document.getElementById('acctLoginBtn').onclick = async ()=>{
+      const email = norm(document.getElementById('acctEmail').value);
+      const password = document.getElementById('acctPassword').value;
+      const status = document.getElementById('acctStatus');
+      status.textContent = 'מתחברים...';
+      try{
+        const { error } = await sbClient.auth.signInWithPassword({email, password});
+        if(error) throw error;
+        currentUser = (await sbClient.auth.getUser()).data.user;
+        status.textContent = '';
+        await loadAccountData();
+        renderAccountBox();
+      }catch(e){ status.textContent = 'שגיאה: ' + (e.message||'התחברות נכשלה'); }
+    };
+    document.getElementById('acctSignupBtn').onclick = async ()=>{
+      const email = norm(document.getElementById('acctEmail').value);
+      const password = document.getElementById('acctPassword').value;
+      const status = document.getElementById('acctStatus');
+      status.textContent = 'נרשמים...';
+      try{
+        const { error } = await sbClient.auth.signUp({email, password});
+        if(error) throw error;
+        status.textContent = 'נרשמתם! אם נדרש אימות אימייל, בדקו את תיבת הדואר ואז התחברו.';
+      }catch(e){ status.textContent = 'שגיאה: ' + (e.message||'הרשמה נכשלה'); }
+    };
+    document.getElementById('acctForgotBtn').onclick = async ()=>{
+      const email = norm(document.getElementById('acctEmail').value);
+      const status = document.getElementById('acctStatus');
+      if(!email){ status.textContent = 'הזינו קודם את כתובת האימייל'; return; }
+      try{
+        const { error } = await sbClient.auth.resetPasswordForEmail(email);
+        if(error) throw error;
+        status.textContent = 'נשלח מייל לאיפוס סיסמה';
+      }catch(e){ status.textContent = 'שגיאה: ' + (e.message||''); }
+    };
+    return;
+  }
+
+  const shopPicker = accountShoppingRows.length>1 ? `
+    <div class="acct-picker">
+      <div class="settings-hint" style="font-weight:700;margin-bottom:4px;">איזו רשימת קניות להציג:</div>
+      <select id="shopRowPicker" class="week-select">
+        ${accountShoppingRows.map(r=>`<option value="${r.id}" ${r.id===activeShoppingRowId?'selected':''}>${r.owner_id===currentUser.id?'שלי':r.owner_email}</option>`).join('')}
+      </select>
+    </div>` : '';
+  const recPicker = accountRecipeRows.length>1 ? `
+    <div class="acct-picker">
+      <div class="settings-hint" style="font-weight:700;margin-bottom:4px;">אילו מתכונים להציג:</div>
+      <select id="recRowPicker" class="week-select">
+        ${accountRecipeRows.map(r=>`<option value="${r.id}" ${r.id===activeRecipesRowId?'selected':''}>${r.owner_id===currentUser.id?'שלי':r.owner_email}</option>`).join('')}
+      </select>
+    </div>` : '';
+  el.innerHTML = `
+    <div class="sync-box">
+      <div class="sync-row">
+        <span class="sync-status">✓ מחוברים כ-<b>${currentUser.email}</b></span>
+        <button id="acctLogoutBtn">התנתקות</button>
+      </div>
+      ${shopPicker}${recPicker}
+      <div class="acct-picker">
+        <div class="settings-hint" style="font-weight:700;margin-bottom:4px;">שתפו את רשימות הקניות שלכם עם:</div>
+        <div class="add-row">
+          <input type="email" id="shareShoppingEmail" placeholder="אימייל של השותף/ה">
+          <button id="shareShoppingBtn">שתפו</button>
+        </div>
+      </div>
+      <div class="acct-picker">
+        <div class="settings-hint" style="font-weight:700;margin-bottom:4px;">שתפו את המתכונים שלכם עם:</div>
+        <div class="add-row">
+          <input type="email" id="shareRecipesEmail" placeholder="אימייל של השותף/ה">
+          <button id="shareRecipesBtn">שתפו</button>
+        </div>
+      </div>
+      <div class="cam-status" id="acctStatus"></div>
+    </div>`;
+  document.getElementById('acctLogoutBtn').onclick = doLogout;
+  const shopPickerEl = document.getElementById('shopRowPicker');
+  if(shopPickerEl) shopPickerEl.onchange = ()=>{
+    const row = accountShoppingRows.find(r=>r.id===shopPickerEl.value);
+    if(row){ applyShoppingRow(row); renderAll(); }
+  };
+  const recPickerEl = document.getElementById('recRowPicker');
+  if(recPickerEl) recPickerEl.onchange = ()=>{
+    const row = accountRecipeRows.find(r=>r.id===recPickerEl.value);
+    if(row){ applyRecipesRow(row); renderAll(); }
+  };
+  const status = document.getElementById('acctStatus');
+  document.getElementById('shareShoppingBtn').onclick = async ()=>{
+    const email = norm(document.getElementById('shareShoppingEmail').value);
+    if(!email) return;
+    status.textContent = 'משתפים...';
+    try{
+      const result = await shareRow(activeShoppingRowId, email);
+      status.textContent = result === 'ok' ? '✓ שותף בהצלחה' : 'שגיאה: ' + result;
+    }catch(e){ status.textContent = 'שגיאה: ' + (e.message||''); }
+  };
+  document.getElementById('shareRecipesBtn').onclick = async ()=>{
+    const email = norm(document.getElementById('shareRecipesEmail').value);
+    if(!email) return;
+    status.textContent = 'משתפים...';
+    try{
+      const result = await shareRow(activeRecipesRowId, email);
+      status.textContent = result === 'ok' ? '✓ שותף בהצלחה' : 'שגיאה: ' + result;
+    }catch(e){ status.textContent = 'שגיאה: ' + (e.message||''); }
+  };
+}
+async function initAccount(){
+  if(!sbClient) return;
+  const { data:{ session } } = await sbClient.auth.getSession();
+  currentUser = session ? session.user : null;
+  if(currentUser) await loadAccountData();
+  renderAccountBox();
+}
 let syncCode = getActiveList().syncCode || null;
 let ranOutMode = false;
 const WEEK_DAYS = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
@@ -1939,11 +2181,13 @@ function saveShoppingList(){
   getActiveList().items = [...shoppingList];
   localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
   pushSync();
+  pushShoppingRow();
 }
 function saveBought(){
   getActiveList().bought = [...boughtItems];
   localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
   pushSync();
+  pushShoppingRow();
 }
 function switchShoppingList(id){
   if(!shoppingLists[id] || id === activeListId) return;
@@ -1957,6 +2201,7 @@ function switchShoppingList(id){
   shoppingList = new Set(getActiveList().items||[]);
   boughtItems = new Set(getActiveList().bought||[]);
   syncCode = getActiveList().syncCode || null;
+  pushShoppingRow();
   renderShoppingPanel();
   renderTabBadges();
 }
@@ -2006,7 +2251,7 @@ function deleteShoppingList(id){
     delete shoppingLists[id];
     localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
     if(activeListId === id) switchShoppingList('main');
-    else renderShoppingPanel();
+    else { pushShoppingRow(); renderShoppingPanel(); }
   });
 }
 function renderListSwitcher(){
@@ -3481,6 +3726,7 @@ function renderCustomRecipesList(){
         const idx = RECIPES.findIndex(r=>r.name===name);
         if(idx>-1) RECIPES.splice(idx,1);
         pushRecipeSync();
+        pushRecipesRow();
         renderAll();
       });
     };
@@ -3564,6 +3810,7 @@ function renderImportForm(parsed){
     localStorage.setItem('custom_recipes', JSON.stringify(customRecipes));
     RECIPES.push(recipe);
     pushRecipeSync();
+    pushRecipesRow();
     el.innerHTML = '';
     document.getElementById('importStatus').textContent = `✓ "${name}" נשמר בהצלחה`;
     setTimeout(()=>{ document.getElementById('importStatus').textContent=''; }, 4000);
@@ -3867,6 +4114,7 @@ applyTheme();
 checkDailyFridgeReset();
 renderCatTabs();
 renderAll();
+initAccount();
 
 // Register the service worker for offline support and real installability.
 // Requires service-worker.js (and manifest.json + icons) to be hosted in the same folder as this file.
