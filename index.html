@@ -1613,12 +1613,14 @@ function catOf(item){ return categoryOverrides[item] || ING_TO_CAT[item] || 'א�
 function setCategoryOverride(item, cat){
   if(cat) categoryOverrides[item] = cat; else delete categoryOverrides[item];
   localStorage.setItem('category_overrides', JSON.stringify(categoryOverrides));
+  scheduleAppStatePush();
 }
 let iconOverrides = JSON.parse(localStorage.getItem('icon_overrides')||'{}');
 function iconOf(item){ return iconOverrides[item] || ING_EMOJI[item] || '🛒'; }
 function setIconOverride(item, icon){
   if(icon) iconOverrides[item] = icon; else delete iconOverrides[item];
   localStorage.setItem('icon_overrides', JSON.stringify(iconOverrides));
+  scheduleAppStatePush();
 }
 
 let autoResetEnabled = localStorage.getItem('auto_reset_enabled') === '1';
@@ -1922,8 +1924,68 @@ const sbClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SU
 let currentUser = null;
 let activeShoppingRowId = localStorage.getItem('active_shopping_row') || null;
 let activeRecipesRowId = localStorage.getItem('active_recipes_row') || null;
+let activeStateRowId = localStorage.getItem('active_state_row') || null;
 let accountShoppingRows = [];
 let accountRecipeRows = [];
+let accountStateRows = [];
+let appStatePushTimer = null;
+
+function collectAppState(){
+  return {
+    fridge: [...fridge],
+    cookedSet: [...cookedSet],
+    cookHistory,
+    favorites: [...favorites],
+    weeklyPlan,
+    itemUsage,
+    categoryOverrides,
+    iconOverrides,
+    learnedLabels,
+    learnedBarcodes,
+    autoResetEnabled,
+    protectedCategories
+  };
+}
+function applyAppStateRow(row){
+  activeStateRowId = row.id;
+  localStorage.setItem('active_state_row', row.id);
+  const p = row.payload || {};
+  fridge = new Set(p.fridge || []);
+  cookedSet = new Set(p.cookedSet || []);
+  cookHistory = p.cookHistory || {};
+  favorites = new Set(p.favorites || []);
+  weeklyPlan = p.weeklyPlan || {};
+  itemUsage = p.itemUsage || {};
+  categoryOverrides = p.categoryOverrides || {};
+  iconOverrides = p.iconOverrides || {};
+  learnedLabels = p.learnedLabels || {};
+  learnedBarcodes = p.learnedBarcodes || {};
+  autoResetEnabled = !!p.autoResetEnabled;
+  protectedCategories = p.protectedCategories || ["מזווה","תיבול ואפייה"];
+  localStorage.setItem('fridge_items', JSON.stringify([...fridge]));
+  localStorage.setItem('cooked_recipes', JSON.stringify([...cookedSet]));
+  localStorage.setItem('cook_history', JSON.stringify(cookHistory));
+  localStorage.setItem('favorites', JSON.stringify([...favorites]));
+  localStorage.setItem('weekly_plan', JSON.stringify(weeklyPlan));
+  localStorage.setItem('item_usage', JSON.stringify(itemUsage));
+  localStorage.setItem('category_overrides', JSON.stringify(categoryOverrides));
+  localStorage.setItem('icon_overrides', JSON.stringify(iconOverrides));
+  localStorage.setItem('learned_labels', JSON.stringify(learnedLabels));
+  localStorage.setItem('learned_barcodes', JSON.stringify(learnedBarcodes));
+  localStorage.setItem('auto_reset_enabled', autoResetEnabled ? '1' : '0');
+  localStorage.setItem('protected_categories', JSON.stringify(protectedCategories));
+}
+async function pushAppState(){
+  if(!currentUser || !activeStateRowId || !sbClient) return;
+  try{
+    await sbClient.from('user_data').update({payload: collectAppState(), updated_at: new Date().toISOString()}).eq('id', activeStateRowId);
+  }catch(e){ /* offline — local copy is already saved */ }
+}
+function scheduleAppStatePush(){
+  if(!currentUser || !activeStateRowId) return;
+  clearTimeout(appStatePushTimer);
+  appStatePushTimer = setTimeout(pushAppState, 1200);
+}
 
 async function fetchUserDataRows(kind){
   if(!sbClient) return [];
@@ -1975,6 +2037,19 @@ async function loadAccountData(){
     const ractiveId = (activeRecipesRowId && accountRecipeRows.find(r=>r.id===activeRecipesRowId)) ? activeRecipesRowId : rmine.id;
     applyRecipesRow(accountRecipeRows.find(r=>r.id===ractiveId));
   }
+
+  accountStateRows = await fetchUserDataRows('app_state');
+  let smine = accountStateRows.find(r=>r.owner_id === currentUser.id);
+  if(!smine){
+    const { data } = await sbClient.from('user_data').insert({
+      owner_id: currentUser.id, owner_email: currentUser.email, kind:'app_state', payload: collectAppState()
+    }).select().single();
+    if(data){ smine = data; accountStateRows.push(smine); }
+  }
+  if(smine){
+    const sactiveId = (activeStateRowId && accountStateRows.find(r=>r.id===activeStateRowId)) ? activeStateRowId : smine.id;
+    applyAppStateRow(accountStateRows.find(r=>r.id===sactiveId));
+  }
   renderAll();
 }
 async function pushShoppingRow(){
@@ -1999,8 +2074,10 @@ async function doLogout(){
   currentUser = null;
   activeShoppingRowId = null;
   activeRecipesRowId = null;
+  activeStateRowId = null;
   localStorage.removeItem('active_shopping_row');
   localStorage.removeItem('active_recipes_row');
+  localStorage.removeItem('active_state_row');
   renderAccountBox();
 }
 function renderAccountBox(){
@@ -2074,13 +2151,20 @@ function renderAccountBox(){
         ${accountRecipeRows.map(r=>`<option value="${r.id}" ${r.id===activeRecipesRowId?'selected':''}>${r.owner_id===currentUser.id?'שלי':r.owner_email}</option>`).join('')}
       </select>
     </div>` : '';
+  const statePicker = accountStateRows.length>1 ? `
+    <div class="acct-picker">
+      <div class="settings-hint" style="font-weight:700;margin-bottom:4px;">איזה מקרר ונתונים נוספים להציג:</div>
+      <select id="stateRowPicker" class="week-select">
+        ${accountStateRows.map(r=>`<option value="${r.id}" ${r.id===activeStateRowId?'selected':''}>${r.owner_id===currentUser.id?'שלי':r.owner_email}</option>`).join('')}
+      </select>
+    </div>` : '';
   el.innerHTML = `
     <div class="sync-box">
       <div class="sync-row">
         <span class="sync-status">✓ מחוברים כ-<b>${currentUser.email}</b></span>
         <button id="acctLogoutBtn">התנתקות</button>
       </div>
-      ${shopPicker}${recPicker}
+      ${shopPicker}${recPicker}${statePicker}
       <div class="acct-picker">
         <div class="settings-hint" style="font-weight:700;margin-bottom:4px;">שתפו את רשימות הקניות שלכם עם:</div>
         <div class="add-row">
@@ -2095,6 +2179,13 @@ function renderAccountBox(){
           <button id="shareRecipesBtn">שתפו</button>
         </div>
       </div>
+      <div class="acct-picker">
+        <div class="settings-hint" style="font-weight:700;margin-bottom:4px;">שתפו את המקרר ושאר הנתונים (מועדפים, היסטוריה, תוכנית שבועית...) עם:</div>
+        <div class="add-row">
+          <input type="email" id="shareStateEmail" placeholder="אימייל של השותף/ה">
+          <button id="shareStateBtn">שתפו</button>
+        </div>
+      </div>
       <div class="cam-status" id="acctStatus"></div>
     </div>`;
   document.getElementById('acctLogoutBtn').onclick = doLogout;
@@ -2107,6 +2198,11 @@ function renderAccountBox(){
   if(recPickerEl) recPickerEl.onchange = ()=>{
     const row = accountRecipeRows.find(r=>r.id===recPickerEl.value);
     if(row){ applyRecipesRow(row); renderAll(); }
+  };
+  const statePickerEl = document.getElementById('stateRowPicker');
+  if(statePickerEl) statePickerEl.onchange = ()=>{
+    const row = accountStateRows.find(r=>r.id===statePickerEl.value);
+    if(row){ applyAppStateRow(row); renderAll(); }
   };
   const status = document.getElementById('acctStatus');
   document.getElementById('shareShoppingBtn').onclick = async ()=>{
@@ -2124,6 +2220,15 @@ function renderAccountBox(){
     status.textContent = 'משתפים...';
     try{
       const result = await shareRow(activeRecipesRowId, email);
+      status.textContent = result === 'ok' ? '✓ שותף בהצלחה' : 'שגיאה: ' + result;
+    }catch(e){ status.textContent = 'שגיאה: ' + (e.message||''); }
+  };
+  document.getElementById('shareStateBtn').onclick = async ()=>{
+    const email = norm(document.getElementById('shareStateEmail').value);
+    if(!email) return;
+    status.textContent = 'משתפים...';
+    try{
+      const result = await shareRow(activeStateRowId, email);
       status.textContent = result === 'ok' ? '✓ שותף בהצלחה' : 'שגיאה: ' + result;
     }catch(e){ status.textContent = 'שגיאה: ' + (e.message||''); }
   };
@@ -2148,6 +2253,7 @@ let itemUsage = JSON.parse(localStorage.getItem('item_usage')||'{}');
 function recordUsage(name){
   itemUsage[name] = (itemUsage[name]||0) + 1;
   localStorage.setItem('item_usage', JSON.stringify(itemUsage));
+  scheduleAppStatePush();
 }
 function getAllKnownItems(){
   const map = new Map();
@@ -2174,9 +2280,9 @@ function renderAutocomplete(containerId, query, onPick){
   });
 }
 
-function saveFridge(){ localStorage.setItem('fridge_items', JSON.stringify([...fridge])); }
-function saveCooked(){ localStorage.setItem('cooked_recipes', JSON.stringify([...cookedSet])); }
-function saveCookHistory(){ localStorage.setItem('cook_history', JSON.stringify(cookHistory)); }
+function saveFridge(){ localStorage.setItem('fridge_items', JSON.stringify([...fridge])); scheduleAppStatePush(); }
+function saveCooked(){ localStorage.setItem('cooked_recipes', JSON.stringify([...cookedSet])); scheduleAppStatePush(); }
+function saveCookHistory(){ localStorage.setItem('cook_history', JSON.stringify(cookHistory)); scheduleAppStatePush(); }
 function saveShoppingList(){
   getActiveList().items = [...shoppingList];
   localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
@@ -2282,7 +2388,7 @@ function wireListSwitcher(){
   const addBtn = document.getElementById('addListBtn');
   if(addBtn) addBtn.onclick = createShoppingList;
 }
-function saveFavorites(){ localStorage.setItem('favorites', JSON.stringify([...favorites])); }
+function saveFavorites(){ localStorage.setItem('favorites', JSON.stringify([...favorites])); scheduleAppStatePush(); }
 
 // ——— Cross-device shopping list sync (via your Supabase project) ———
 function supaHeaders(extra){
@@ -3024,6 +3130,7 @@ function renderWeekPlan(){
         if(!weeklyPlan[day]) weeklyPlan[day] = [];
         if(!weeklyPlan[day].includes(val)) weeklyPlan[day].push(val);
         localStorage.setItem('weekly_plan', JSON.stringify(weeklyPlan));
+        scheduleAppStatePush();
         renderWeekPlan();
       }
     };
@@ -3034,6 +3141,7 @@ function renderWeekPlan(){
       const name = x.dataset.name;
       weeklyPlan[day] = (weeklyPlan[day]||[]).filter(n=>n!==name);
       localStorage.setItem('weekly_plan', JSON.stringify(weeklyPlan));
+      scheduleAppStatePush();
       renderWeekPlan();
     };
   });
@@ -3061,6 +3169,7 @@ function renderWeekPlan(){
     showConfirmModal('לנקות את כל תוכנית השבוע?', ()=>{
       weeklyPlan = {};
       localStorage.setItem('weekly_plan', JSON.stringify(weeklyPlan));
+      scheduleAppStatePush();
       renderWeekPlan();
     });
   };
@@ -3651,11 +3760,13 @@ function renderAutoResetSettings(){
   toggle.onchange = ()=>{
     autoResetEnabled = toggle.checked;
     localStorage.setItem('auto_reset_enabled', autoResetEnabled ? '1' : '0');
+    scheduleAppStatePush();
   };
   grid.querySelectorAll('input[type=checkbox]').forEach(cb=>{
     cb.onchange = ()=>{
       protectedCategories = [...grid.querySelectorAll('input:checked')].map(c=>c.value);
       localStorage.setItem('protected_categories', JSON.stringify(protectedCategories));
+      scheduleAppStatePush();
     };
   });
 }
@@ -3871,11 +3982,13 @@ let learnedLabels = JSON.parse(localStorage.getItem('learned_labels')||'{}');
 function teachLabel(label, hebrewName){
   learnedLabels[label.toLowerCase()] = hebrewName;
   localStorage.setItem('learned_labels', JSON.stringify(learnedLabels));
+  scheduleAppStatePush();
 }
 let learnedBarcodes = JSON.parse(localStorage.getItem('learned_barcodes')||'{}');
 function teachBarcode(code, name){
   learnedBarcodes[code] = name;
   localStorage.setItem('learned_barcodes', JSON.stringify(learnedBarcodes));
+  scheduleAppStatePush();
 }
 let mobilenetModel = null;
 let mobilenetLoading = null;
