@@ -115,6 +115,58 @@
     cursor:pointer;
     font-family:'Assistant',sans-serif;
   }
+  .list-section{margin-top:22px; text-align:right;}
+  .list-title{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    font-size:12.5px;
+    font-weight:700;
+    color:var(--ink-soft);
+    margin-bottom:8px;
+  }
+  .list-count{color:var(--herb);}
+  .list-items{
+    max-height:220px;
+    overflow-y:auto;
+    border:1px solid var(--line);
+    border-radius:12px;
+    background:var(--surface);
+  }
+  .list-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px 12px;
+    border-bottom:1px solid var(--line);
+  }
+  .list-row:last-child{border-bottom:none;}
+  .list-check{
+    width:22px;
+    height:22px;
+    border-radius:6px;
+    border:2px solid var(--line);
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:14px;
+    color:#fff;
+    cursor:pointer;
+  }
+  .list-row.bought .list-check{background:var(--herb); border-color:var(--herb);}
+  .list-row.bought .list-item-name{text-decoration:line-through; opacity:.5;}
+  .list-item-name{flex:1; font-size:15px; cursor:pointer;}
+  .list-del{
+    background:none;
+    border:none;
+    color:var(--brick);
+    font-size:16px;
+    font-weight:700;
+    padding:4px 6px;
+    cursor:pointer;
+  }
+  .list-empty{padding:16px; font-size:13.5px; color:var(--ink-soft); text-align:center;}
   .open-app{
     display:inline-block;
     margin-top:36px;
@@ -216,6 +268,10 @@ async function renderAddScreen(user, row){
     </div>
     <div class="recent" id="autocompleteRow" style="margin-top:10px;"></div>
     <div class="status" id="status"></div>
+    <div class="list-section">
+      <div class="list-title"><span>הרשימה שלכם</span><span class="list-count" id="listCount"></span></div>
+      <div class="list-items" id="listItems"></div>
+    </div>
     <div class="freq-section">
       <div class="freq-title">מוצרים בשימוש תדיר — לחצו להוספה מהירה</div>
       <div class="freq-grid" id="freqGrid"></div>
@@ -226,6 +282,34 @@ async function renderAddScreen(user, row){
   `;
   const input = document.getElementById('itemInput');
   const status = document.getElementById('status');
+
+  function renderListItems(listData){
+    const el = document.getElementById('listItems');
+    const items = listData.items || [];
+    const bought = listData.bought || [];
+    document.getElementById('listCount').textContent = items.length ? `${items.filter(i=>!bought.includes(i)).length}/${items.length}` : '';
+    if(items.length === 0){
+      el.innerHTML = '<div class="list-empty">הרשימה ריקה</div>';
+      return;
+    }
+    const sorted = [...items].sort((a,b)=> (bought.includes(a)?1:0) - (bought.includes(b)?1:0));
+    el.innerHTML = sorted.map(name=>{
+      const isBought = bought.includes(name);
+      return `
+        <div class="list-row${isBought?' bought':''}" data-name="${name}">
+          <button type="button" class="list-check" data-action="toggle" data-name="${name}">${isBought?'✓':''}</button>
+          <span class="list-item-name" data-action="toggle" data-name="${name}">${name}</span>
+          <button type="button" class="list-del" data-action="del" data-name="${name}">×</button>
+        </div>`;
+    }).join('');
+    el.querySelectorAll('[data-action="toggle"]').forEach(elm=>{
+      elm.onclick = ()=> toggleBought(elm.dataset.name);
+    });
+    el.querySelectorAll('[data-action="del"]').forEach(elm=>{
+      elm.onclick = ()=> deleteItem(elm.dataset.name);
+    });
+  }
+  renderListItems(lists[key]);
 
   function renderFrequentGrid(currentItems){
     const grid = document.getElementById('freqGrid');
@@ -258,37 +342,68 @@ async function renderAddScreen(user, row){
   }
   input.addEventListener('input', renderAutocomplete);
 
-  async function addItem(rawVal, refocus){
-    const val = norm(rawVal);
-    if(!val) return;
-    input.disabled = true;
+  // Fetches the current row fresh, lets `mutator` change freshLists[freshKey] in place, then saves.
+  async function mutateAndSave(mutator, busyMsg){
     status.className = 'status';
-    status.textContent = 'שומרים...';
+    status.textContent = busyMsg;
     try{
-      // re-fetch fresh in case it changed elsewhere since this page loaded
       const { data: fresh, error: fetchErr } = await sbClient.from('user_data').select('*').eq('id', row.id).single();
       if(fetchErr) throw fetchErr;
       const { lists: freshLists, key: freshKey } = pickTargetList(fresh.payload);
       if(!freshLists[freshKey].items) freshLists[freshKey].items = [];
-      if(!freshLists[freshKey].items.includes(val)) freshLists[freshKey].items.push(val);
-      freshLists[freshKey].bought = (freshLists[freshKey].bought||[]).filter(i=>i!==val);
+      if(!freshLists[freshKey].bought) freshLists[freshKey].bought = [];
+      mutator(freshLists, freshKey);
       const { error: updateErr } = await sbClient.from('user_data').update({
         payload: freshLists,
         updated_at: new Date().toISOString()
       }).eq('id', row.id);
       if(updateErr) throw updateErr;
       row.payload = freshLists;
-      status.textContent = `✓ "${val}" נוסף`;
-      input.value = '';
-      document.getElementById('autocompleteRow').innerHTML = '';
+      renderListItems(freshLists[freshKey]);
       renderFrequentGrid(freshLists[freshKey].items);
+      return true;
     }catch(e){
       status.className = 'status err';
       status.textContent = 'שגיאה בשמירה — נסו שוב (' + (e.message||'') + ')';
+      return false;
+    }
+  }
+
+  async function addItem(rawVal, refocus){
+    const val = norm(rawVal);
+    if(!val) return;
+    input.disabled = true;
+    const ok = await mutateAndSave((freshLists, freshKey)=>{
+      if(!freshLists[freshKey].items.includes(val)) freshLists[freshKey].items.push(val);
+      freshLists[freshKey].bought = freshLists[freshKey].bought.filter(i=>i!==val);
+    }, 'שומרים...');
+    if(ok){
+      status.textContent = `✓ "${val}" נוסף`;
+      input.value = '';
+      document.getElementById('autocompleteRow').innerHTML = '';
     }
     input.disabled = false;
     if(refocus) input.focus(); else input.blur();
     setTimeout(()=>{ if(!status.className.includes('err')) status.textContent=''; }, 2500);
+  }
+
+  async function toggleBought(name){
+    await mutateAndSave((freshLists, freshKey)=>{
+      if(freshLists[freshKey].bought.includes(name)){
+        freshLists[freshKey].bought = freshLists[freshKey].bought.filter(i=>i!==name);
+      } else {
+        freshLists[freshKey].bought.push(name);
+      }
+    }, '');
+    status.textContent = '';
+  }
+
+  async function deleteItem(name){
+    await mutateAndSave((freshLists, freshKey)=>{
+      freshLists[freshKey].items = freshLists[freshKey].items.filter(i=>i!==name);
+      freshLists[freshKey].bought = freshLists[freshKey].bought.filter(i=>i!==name);
+    }, '');
+    status.textContent = '';
   }
 
   document.getElementById('addBtn').onclick = ()=> addItem(input.value, true);
