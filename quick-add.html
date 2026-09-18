@@ -220,19 +220,12 @@ async function renderAddScreen(user, row){
       <div class="freq-title">מוצרים בשימוש תדיר — לחצו להוספה מהירה</div>
       <div class="freq-grid" id="freqGrid"></div>
     </div>
-    <div class="recent" id="recentList"></div>
     <a class="open-app" href="index.html">פתחו את האפליקציה המלאה</a>
     <br>
     <span class="logout-link" id="logoutLink">התנתקות</span>
   `;
   const input = document.getElementById('itemInput');
   const status = document.getElementById('status');
-
-  function renderRecent(items){
-    const el = document.getElementById('recentList');
-    el.innerHTML = items.slice(-5).reverse().map(i=>`<span>${i}</span>`).join('');
-  }
-  renderRecent(lists[key].items || []);
 
   function renderFrequentGrid(currentItems){
     const grid = document.getElementById('freqGrid');
@@ -242,11 +235,11 @@ async function renderAddScreen(user, row){
     const pool = [...map.entries()]
       .filter(([name])=> !currentItems.includes(name))
       .sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0],'he'))
-      .slice(0,10)
+      .slice(0,24)
       .map(([name])=>name);
     grid.innerHTML = pool.map(name=>`<button type="button" class="freq-chip" data-name="${name}">${name}</button>`).join('');
     grid.querySelectorAll('.freq-chip').forEach(chip=>{
-      chip.onclick = ()=> addItem(chip.dataset.name);
+      chip.onclick = ()=> addItem(chip.dataset.name, false);
     });
   }
   renderFrequentGrid(lists[key].items || []);
@@ -259,13 +252,13 @@ async function renderAddScreen(user, row){
       chip.onclick = ()=>{
         input.value = chip.dataset.name;
         document.getElementById('autocompleteRow').innerHTML = '';
-        addItem(chip.dataset.name);
+        addItem(chip.dataset.name, true);
       };
     });
   }
   input.addEventListener('input', renderAutocomplete);
 
-  async function addItem(rawVal){
+  async function addItem(rawVal, refocus){
     const val = norm(rawVal);
     if(!val) return;
     input.disabled = true;
@@ -288,19 +281,18 @@ async function renderAddScreen(user, row){
       status.textContent = `✓ "${val}" נוסף`;
       input.value = '';
       document.getElementById('autocompleteRow').innerHTML = '';
-      renderRecent(freshLists[freshKey].items);
       renderFrequentGrid(freshLists[freshKey].items);
     }catch(e){
       status.className = 'status err';
       status.textContent = 'שגיאה בשמירה — נסו שוב (' + (e.message||'') + ')';
     }
     input.disabled = false;
-    input.focus();
+    if(refocus) input.focus(); else input.blur();
     setTimeout(()=>{ if(!status.className.includes('err')) status.textContent=''; }, 2500);
   }
 
-  document.getElementById('addBtn').onclick = ()=> addItem(input.value);
-  input.addEventListener('keydown', e=>{ if(e.key==='Enter') addItem(input.value); });
+  document.getElementById('addBtn').onclick = ()=> addItem(input.value, true);
+  input.addEventListener('keydown', e=>{ if(e.key==='Enter') addItem(input.value, true); });
 
   document.getElementById('logoutLink').onclick = async ()=>{
     await sbClient.auth.signOut();

@@ -2058,6 +2058,16 @@ async function pushShoppingRow(){
     await sbClient.from('user_data').update({payload: shoppingLists, updated_at: new Date().toISOString()}).eq('id', activeShoppingRowId);
   }catch(e){ /* offline — local copy is already saved */ }
 }
+async function refreshShoppingRowFromAccount(){
+  if(!currentUser || !activeShoppingRowId || !sbClient) return;
+  try{
+    const { data, error } = await sbClient.from('user_data').select('*').eq('id', activeShoppingRowId).single();
+    if(error || !data) return;
+    applyShoppingRow(data);
+    renderShoppingPanel();
+    renderTabBadges();
+  }catch(e){ /* offline — keep showing local copy */ }
+}
 async function pushRecipesRow(){
   if(!currentUser || !activeRecipesRowId || !sbClient) return;
   try{
@@ -3645,8 +3655,8 @@ function switchTab(name){
     btn.classList.toggle('active', btn.dataset.tab === name);
   });
   window.scrollTo(0,0);
-  if(name === 'shopping') pullSync();
-  if(name === 'settings') pullRecipeSync();
+  if(name === 'shopping'){ if(currentUser) refreshShoppingRowFromAccount(); else pullSync(); }
+  if(name === 'settings' && !currentUser) pullRecipeSync();
 }
 
 function renderTabBadges(){
@@ -3674,7 +3684,10 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
   btn.addEventListener('click', ()=> switchTab(btn.dataset.tab));
 });
 switchTab(activeTab);
-window.addEventListener('focus', ()=>{ if(activeTab === 'shopping') pullSync(); });
+window.addEventListener('focus', ()=>{
+  if(activeTab !== 'shopping') return;
+  if(currentUser) refreshShoppingRowFromAccount(); else pullSync();
+});
 
 document.getElementById('ranoutToggleBtn').onclick = ()=>{
   ranOutMode = !ranOutMode;
