@@ -91,6 +91,16 @@
     border-radius:100px;
     font-size:13px;
   }
+  .ac-chip{
+    background:var(--surface);
+    border:1px solid var(--line);
+    color:var(--ink);
+    padding:6px 12px;
+    border-radius:100px;
+    font-size:13px;
+    cursor:pointer;
+    font-family:'Assistant',sans-serif;
+  }
   .open-app{
     display:inline-block;
     margin-top:36px;
@@ -119,6 +129,29 @@ const SUPABASE_URL = 'https://pznpibrlcbjpcoxagxns.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6bnBpYnJsY2JqcGNveGFneG5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5NjEzMjUsImV4cCI6MjEwMjUzNzMyNX0.dvfKlGyI1U_E7G5POQJkLn28gky7cTyJbQqT3Mie_YU';
 const sbClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 const appEl = document.getElementById('app');
+
+const KNOWN_ITEMS = ["עגבניות","מלפפונים","בצל","שום","גזר","פלפל","תפוחי אדמה","קישואים","חסה","כרוב","פטריות","תרד","בטטה","ברוקולי","אפונה קפואה","חציל","במיה","תירס","כרובית","סלרי","כוסברה","ביצים","עוף","בשר טחון","טונה","גבינה צהובה","גבינה לבנה","קוטג'","טופו","נקניקיות","מוצרלה","סלמון","שעועית לבנה","חומוס","עדשים","שעועית אדומה","חלב","יוגורט","חמאה","שמנת מתוקה","שמנת חמוצה","גבינת שמנת","פטה","חלב קוקוס","אורז","פסטה","לחם","קמח","קינואה","בורגול","פיתות","נודלס","שיבולת שועל","גריסים","שמן זית","מלח","פלפל שחור","סוכר","רוטב סויה","טחינה","חומץ","דבש","אבקת אפייה","חמאת בוטנים","קארי","כמון","פפריקה","חרדל","מיונז","תפוח","בננה","לימון","ענבים","תותים","אבוקדו","תפוז","שומשום","תימין","זעתר","קינמון","צנוברים","פירורי לחם","שמרים יבשים","חמוציות מיובשות","אגוזי מלך"];
+let itemUsage = {};
+
+function getSuggestions(query){
+  const q = norm(query);
+  if(!q) return [];
+  const map = new Map();
+  KNOWN_ITEMS.forEach(i=>{ if(!map.has(i)) map.set(i, 0); });
+  Object.keys(itemUsage).forEach(i=> map.set(i, itemUsage[i]));
+  return [...map.entries()]
+    .filter(([name])=> name.startsWith(q) && name !== q)
+    .sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0],'he'))
+    .slice(0,6)
+    .map(([name])=>name);
+}
+async function loadItemUsage(user){
+  try{
+    const { data: rows } = await sbClient.from('user_data').select('*').eq('kind','app_state');
+    const row = (rows||[]).find(r=>r.owner_id===user.id) || (rows||[])[0];
+    if(row && row.payload && row.payload.itemUsage) itemUsage = row.payload.itemUsage;
+  }catch(e){ /* suggestions just won't be personalized this session */ }
+}
 
 function norm(s){ return (s||'').trim().replace(/\s+/g,' '); }
 
@@ -167,6 +200,7 @@ async function renderAddScreen(user, row){
       <input type="text" id="itemInput" placeholder="מה להוסיף?" autofocus>
       <button id="addBtn">הוספה</button>
     </div>
+    <div class="recent" id="autocompleteRow" style="margin-top:10px;"></div>
     <div class="status" id="status"></div>
     <div class="recent" id="recentList"></div>
     <a class="open-app" href="index.html">פתחו את האפליקציה המלאה</a>
@@ -181,6 +215,20 @@ async function renderAddScreen(user, row){
     el.innerHTML = items.slice(-5).reverse().map(i=>`<span>${i}</span>`).join('');
   }
   renderRecent(lists[key].items || []);
+
+  function renderAutocomplete(){
+    const ac = document.getElementById('autocompleteRow');
+    const sugg = getSuggestions(input.value);
+    ac.innerHTML = sugg.map(name=>`<button type="button" class="ac-chip" data-name="${name}">${name}</button>`).join('');
+    ac.querySelectorAll('.ac-chip').forEach(chip=>{
+      chip.onclick = ()=>{
+        input.value = chip.dataset.name;
+        document.getElementById('autocompleteRow').innerHTML = '';
+        document.getElementById('addBtn').click();
+      };
+    });
+  }
+  input.addEventListener('input', renderAutocomplete);
 
   document.getElementById('addBtn').onclick = async ()=>{
     const val = norm(input.value);
@@ -204,6 +252,7 @@ async function renderAddScreen(user, row){
       row.payload = freshLists;
       status.textContent = `✓ "${val}" נוסף`;
       input.value = '';
+      document.getElementById('autocompleteRow').innerHTML = '';
       renderRecent(freshLists[freshKey].items);
     }catch(e){
       status.className = 'status err';
@@ -238,6 +287,7 @@ async function start(){
       if(insErr) throw insErr;
       row = created;
     }
+    await loadItemUsage(user);
     await renderAddScreen(user, row);
   }catch(e){
     appEl.innerHTML = `<h1>הוספה לרשימת הקניות</h1><div class="status err">שגיאה בטעינה: ${e.message||''}</div>`;
