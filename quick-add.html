@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#5B7553">
+<title>הוספה מהירה</title>
+<link rel="manifest" href="quickadd-manifest.json">
+<link rel="icon" href="quickadd-icon-192.png">
+<link rel="apple-touch-icon" href="quickadd-icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@700;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root{
+    --paper:#F6F3EA; --ink:#2B2A26; --ink-soft:#6B675E; --line:#E4DFD0;
+    --surface:#FFFFFF; --herb:#5B7553; --herb-soft:#E3EADD;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;width:100%;overflow-x:hidden;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Assistant',sans-serif;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .wrap{max-width:420px; width:100%; text-align:center;}
+  h1{
+    font-family:'Frank Ruhl Libre',serif;
+    font-weight:900;
+    font-size:26px;
+    margin:0 0 6px;
+  }
+  .list-name{
+    font-size:14px;
+    color:var(--ink-soft);
+    margin-bottom:28px;
+  }
+  .add-row{
+    display:flex;
+    gap:8px;
+  }
+  input{
+    flex:1;
+    min-width:0;
+    border:1px solid var(--line);
+    background:var(--surface);
+    border-radius:12px;
+    padding:16px;
+    font-size:18px;
+    font-family:'Assistant',sans-serif;
+    color:var(--ink);
+  }
+  input:focus{outline:2px solid var(--herb); outline-offset:1px;}
+  button{
+    border:none;
+    background:var(--herb);
+    color:#fff;
+    border-radius:12px;
+    padding:0 22px;
+    font-size:17px;
+    font-weight:700;
+    font-family:'Assistant',sans-serif;
+    cursor:pointer;
+  }
+  .status{
+    margin-top:18px;
+    min-height:24px;
+    font-size:15px;
+    font-weight:700;
+    color:var(--herb);
+  }
+  .recent{
+    margin-top:24px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    justify-content:center;
+  }
+  .recent span{
+    background:var(--herb-soft);
+    color:var(--herb);
+    padding:6px 12px;
+    border-radius:100px;
+    font-size:13px;
+  }
+  .open-app{
+    display:inline-block;
+    margin-top:36px;
+    color:var(--ink-soft);
+    font-size:13px;
+    text-decoration:underline;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>הוספה לרשימת הקניות</h1>
+  <div class="list-name" id="listName">טוענים...</div>
+  <div class="add-row">
+    <input type="text" id="itemInput" placeholder="מה להוסיף?" autofocus>
+    <button id="addBtn">הוספה</button>
+  </div>
+  <div class="status" id="status"></div>
+  <div class="recent" id="recentList"></div>
+  <a class="open-app" href="index.html">פתחו את האפליקציה המלאה</a>
+</div>
+<script>
+const SUPABASE_URL = 'https://pznpibrlcbjpcoxagxns.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6bnBpYnJsY2JqcGNveGFneG5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5NjEzMjUsImV4cCI6MjEwMjUzNzMyNX0.dvfKlGyI1U_E7G5POQJkLn28gky7cTyJbQqT3Mie_YU';
+const sbClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+function norm(s){ return s.trim().replace(/\s+/g,' '); }
+
+function loadShoppingLists(){
+  let lists = JSON.parse(localStorage.getItem('shopping_lists')||'null');
+  if(!lists) lists = { main: { name:'רשימה ראשית', items:[], bought:[], syncCode:null } };
+  const activeId = localStorage.getItem('active_shopping_list') || Object.keys(lists)[0];
+  if(!lists[activeId]) return { lists, activeId: Object.keys(lists)[0] };
+  return { lists, activeId };
+}
+
+function renderRecent(items){
+  const el = document.getElementById('recentList');
+  const recent = items.slice(-5).reverse();
+  el.innerHTML = recent.map(i=>`<span>${i}</span>`).join('');
+}
+
+async function pushToAccount(lists){
+  if(!sbClient) return;
+  try{
+    const { data:{ session } } = await sbClient.auth.getSession();
+    if(!session) return;
+    const rowId = localStorage.getItem('active_shopping_row');
+    if(!rowId) return;
+    await sbClient.from('user_data').update({
+      payload: lists,
+      updated_at: new Date().toISOString()
+    }).eq('id', rowId);
+  }catch(e){ /* offline, or not logged in on this device — local save already succeeded */ }
+}
+
+function init(){
+  const { lists, activeId } = loadShoppingLists();
+  document.getElementById('listName').textContent = 'מוסיפים אל: ' + (lists[activeId].name || 'רשימה ראשית');
+  renderRecent(lists[activeId].items || []);
+
+  const input = document.getElementById('itemInput');
+  const status = document.getElementById('status');
+
+  document.getElementById('addBtn').onclick = async ()=>{
+    const val = norm(input.value);
+    if(!val) return;
+    const { lists, activeId } = loadShoppingLists();
+    if(!lists[activeId].items.includes(val)) lists[activeId].items.push(val);
+    lists[activeId].bought = (lists[activeId].bought||[]).filter(i=>i!==val);
+    localStorage.setItem('shopping_lists', JSON.stringify(lists));
+
+    // also track for the main app's autocomplete learning
+    try{
+      const usage = JSON.parse(localStorage.getItem('item_usage')||'{}');
+      usage[val] = (usage[val]||0)+1;
+      localStorage.setItem('item_usage', JSON.stringify(usage));
+    }catch(e){}
+
+    status.textContent = `✓ "${val}" נוסף`;
+    input.value = '';
+    input.focus();
+    renderRecent(lists[activeId].items);
+    pushToAccount(lists);
+    setTimeout(()=>{ status.textContent=''; }, 2500);
+  };
+  input.addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('addBtn').click(); });
+}
+init();
+</script>
+</body>
+</html>
