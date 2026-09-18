@@ -167,6 +167,38 @@
     cursor:pointer;
   }
   .list-empty{padding:16px; font-size:13.5px; color:var(--ink-soft); text-align:center;}
+  .list-title-actions{display:flex; align-items:center; gap:10px;}
+  .clear-bought-link{
+    color:var(--brick);
+    font-size:12px;
+    text-decoration:underline;
+    cursor:pointer;
+    font-weight:400;
+  }
+  .shopping-mode-btn{
+    display:block;
+    width:100%;
+    margin-top:14px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    color:var(--ink);
+  }
+  .shopping-mode-btn.active{
+    background:var(--herb);
+    border-color:var(--herb);
+    color:#fff;
+  }
+  body.shopping-mode .add-row,
+  body.shopping-mode #autocompleteRow,
+  body.shopping-mode .freq-section,
+  body.shopping-mode .open-app,
+  body.shopping-mode .logout-link,
+  body.shopping-mode .list-name{
+    display:none;
+  }
+  body.shopping-mode .list-items{max-height:none;}
+  body.shopping-mode .list-item-name{font-size:19px;}
+  body.shopping-mode .list-row{padding:16px 12px;}
   .open-app{
     display:inline-block;
     margin-top:36px;
@@ -268,8 +300,15 @@ async function renderAddScreen(user, row){
     </div>
     <div class="recent" id="autocompleteRow" style="margin-top:10px;"></div>
     <div class="status" id="status"></div>
+    <button type="button" class="shopping-mode-btn" id="shoppingModeBtn">🔆 מצב קניות</button>
     <div class="list-section">
-      <div class="list-title"><span>הרשימה שלכם</span><span class="list-count" id="listCount"></span></div>
+      <div class="list-title">
+        <span>הרשימה שלכם</span>
+        <div class="list-title-actions">
+          <span class="clear-bought-link" id="clearBoughtLink">מחקו מסומנים</span>
+          <span class="list-count" id="listCount"></span>
+        </div>
+      </div>
       <div class="list-items" id="listItems"></div>
     </div>
     <div class="freq-section">
@@ -405,6 +444,46 @@ async function renderAddScreen(user, row){
     }, '');
     status.textContent = '';
   }
+
+  async function clearBought(){
+    await mutateAndSave((freshLists, freshKey)=>{
+      const bought = freshLists[freshKey].bought || [];
+      freshLists[freshKey].items = freshLists[freshKey].items.filter(i=>!bought.includes(i));
+      freshLists[freshKey].bought = [];
+    }, '');
+    status.textContent = '';
+  }
+  document.getElementById('clearBoughtLink').onclick = clearBought;
+
+  let wakeLockRef = null;
+  async function acquireWakeLock(){
+    try{ if('wakeLock' in navigator) wakeLockRef = await navigator.wakeLock.request('screen'); }catch(e){}
+  }
+  function releaseWakeLock(){
+    if(wakeLockRef){ wakeLockRef.release().catch(()=>{}); wakeLockRef = null; }
+  }
+  const shoppingModeBtn = document.getElementById('shoppingModeBtn');
+  shoppingModeBtn.onclick = ()=>{
+    const active = document.body.classList.toggle('shopping-mode');
+    shoppingModeBtn.classList.toggle('active', active);
+    shoppingModeBtn.textContent = active ? '✕ יציאה ממצב קניות' : '🔆 מצב קניות';
+    if(active) acquireWakeLock(); else releaseWakeLock();
+  };
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState === 'visible' && document.body.classList.contains('shopping-mode')) acquireWakeLock();
+  });
+  document.addEventListener('visibilitychange', async ()=>{
+    if(document.visibilityState !== 'visible') return;
+    try{
+      const { data: fresh } = await sbClient.from('user_data').select('*').eq('id', row.id).single();
+      if(fresh){
+        row.payload = fresh.payload;
+        const { lists: freshLists, key: freshKey } = pickTargetList(fresh.payload);
+        renderListItems(freshLists[freshKey]);
+        renderFrequentGrid(freshLists[freshKey].items);
+      }
+    }catch(e){ /* offline — keep showing last known list */ }
+  });
 
   document.getElementById('addBtn').onclick = ()=> addItem(input.value, true);
   input.addEventListener('keydown', e=>{ if(e.key==='Enter') addItem(input.value, true); });

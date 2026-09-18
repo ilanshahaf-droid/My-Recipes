@@ -685,6 +685,70 @@
   .steps li{margin-bottom:4px;}
 
   /* Cooking mode overlay */
+  .shopping-mode-overlay{
+    position:fixed;
+    inset:0;
+    background:var(--paper);
+    z-index:100;
+    display:none;
+    flex-direction:column;
+    padding:20px 18px 30px;
+    overflow-y:auto;
+  }
+  .shopping-mode-overlay.active{display:flex;}
+  .sm-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:18px;
+  }
+  .sm-title{
+    font-family:'Frank Ruhl Libre',serif;
+    font-weight:900;
+    font-size:24px;
+  }
+  .sm-close{
+    background:none;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:8px 14px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+    color:var(--ink);
+    font-family:'Assistant',sans-serif;
+  }
+  .sm-row{
+    display:flex;
+    align-items:center;
+    gap:16px;
+    padding:18px 4px;
+    border-bottom:1px solid var(--line);
+    cursor:pointer;
+  }
+  .sm-row:last-child{border-bottom:none;}
+  .sm-check{
+    width:30px;
+    height:30px;
+    border-radius:9px;
+    border:2px solid var(--line);
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:18px;
+    color:#fff;
+  }
+  .sm-row.bought .sm-check{background:var(--herb); border-color:var(--herb);}
+  .sm-row.bought .sm-name{text-decoration:line-through; opacity:.45;}
+  .sm-name{font-size:22px; line-height:1.3;}
+  .sm-empty{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:16px;
+    padding:40px 0;
+  }
+
   .cook-overlay{
     position:fixed;
     inset:0;
@@ -1452,7 +1516,10 @@
 
   <div class="tab-content" id="tab-shopping">
     <section style="margin-top:16px;">
-      <h2>רשימת קניות</h2>
+      <div class="section-head">
+        <h2 style="margin:0;">רשימת קניות</h2>
+        <button class="ranout-toggle" id="openShoppingModeBtn">🔆 מצב קניות</button>
+      </div>
       <div class="shopping-panel" id="shoppingPanel"></div>
     </section>
   </div>
@@ -1541,6 +1608,14 @@
   <video id="barcodeVideo" autoplay playsinline muted></video>
   <div class="barcode-hint" id="barcodeHint">כוונו את המצלמה לברקוד המוצר</div>
   <button class="barcode-close" id="barcodeCloseBtn">ביטול</button>
+</div>
+
+<div class="shopping-mode-overlay" id="shoppingModeOverlay">
+  <div class="sm-header">
+    <span class="sm-title">מצב קניות</span>
+    <button class="sm-close" id="smCloseBtn">סגור</button>
+  </div>
+  <div class="sm-list" id="smList"></div>
 </div>
 
 <div class="cook-overlay" id="cookOverlay">
@@ -3446,24 +3521,66 @@ function shareShoppingCode(){
 }
 
 // ——— Cooking Mode ———
-let cookState = { recipe:null, step:0, timerSec:0, timerInterval:null, running:false, usedIngredients:new Set(), wakeLock:null };
+let cookState = { recipe:null, step:0, timerSec:0, timerInterval:null, running:false, usedIngredients:new Set() };
+let wakeLockRef = null;
+let shoppingModeActive = false;
 
 async function acquireWakeLock(){
   try{
     if('wakeLock' in navigator){
-      cookState.wakeLock = await navigator.wakeLock.request('screen');
+      wakeLockRef = await navigator.wakeLock.request('screen');
     }
-  }catch(e){ /* wake lock not available or denied — cooking still works, screen may just dim on its own */ }
+  }catch(e){ /* wake lock not available or denied — screen may just dim on its own */ }
 }
 function releaseWakeLock(){
-  if(cookState.wakeLock){
-    cookState.wakeLock.release().catch(()=>{});
-    cookState.wakeLock = null;
+  if(wakeLockRef){
+    wakeLockRef.release().catch(()=>{});
+    wakeLockRef = null;
   }
 }
 document.addEventListener('visibilitychange', ()=>{
-  if(document.visibilityState === 'visible' && cookState.recipe) acquireWakeLock();
+  if(document.visibilityState === 'visible' && (cookState.recipe || shoppingModeActive)) acquireWakeLock();
 });
+
+function renderShoppingModeList(){
+  const el = document.getElementById('smList');
+  const items = [...shoppingList];
+  if(items.length===0){
+    el.innerHTML = '<div class="sm-empty">הרשימה ריקה</div>';
+    return;
+  }
+  const sorted = [...items].sort((a,b)=> (boughtItems.has(a)?1:0) - (boughtItems.has(b)?1:0));
+  el.innerHTML = sorted.map(name=>{
+    const bought = boughtItems.has(name);
+    return `
+      <div class="sm-row${bought?' bought':''}" data-item="${name}">
+        <span class="sm-check">${bought?'✓':''}</span>
+        <span class="sm-name">${name}</span>
+      </div>`;
+  }).join('');
+  el.querySelectorAll('.sm-row').forEach(row=>{
+    row.onclick = ()=>{
+      const name = row.dataset.item;
+      if(boughtItems.has(name)) boughtItems.delete(name); else boughtItems.add(name);
+      saveBought();
+      renderShoppingModeList();
+      renderShoppingPanel();
+    };
+  });
+}
+function openShoppingMode(){
+  shoppingModeActive = true;
+  document.getElementById('shoppingModeOverlay').classList.add('active');
+  acquireWakeLock();
+  renderShoppingModeList();
+}
+function closeShoppingMode(){
+  shoppingModeActive = false;
+  document.getElementById('shoppingModeOverlay').classList.remove('active');
+  releaseWakeLock();
+}
+document.getElementById('openShoppingModeBtn').onclick = openShoppingMode;
+document.getElementById('smCloseBtn').onclick = closeShoppingMode;
 
 function stopSpeaking(){
   if('speechSynthesis' in window) window.speechSynthesis.cancel();
@@ -3641,6 +3758,7 @@ function renderAll(){
   renderCatOverridesUI();
   renderAutoResetSettings();
   renderLearnedList();
+  if(shoppingModeActive) renderShoppingModeList();
 }
 
 let activeTab = localStorage.getItem('active_tab') || 'fridge';
