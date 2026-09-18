@@ -15,7 +15,7 @@
 <style>
   :root{
     --paper:#F6F3EA; --ink:#2B2A26; --ink-soft:#6B675E; --line:#E4DFD0;
-    --surface:#FFFFFF; --herb:#5B7553; --herb-soft:#E3EADD;
+    --surface:#FFFFFF; --herb:#5B7553; --herb-soft:#E3EADD; --brick:#C1442E;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;width:100%;overflow-x:hidden;}
@@ -76,6 +76,7 @@
     font-weight:700;
     color:var(--herb);
   }
+  .status.err{color:var(--brick);}
   .recent{
     margin-top:24px;
     display:flex;
@@ -97,88 +98,157 @@
     font-size:13px;
     text-decoration:underline;
   }
+  .login-box input{margin-bottom:10px;}
+  .login-btns{display:flex; gap:8px;}
+  .login-btns button{flex:1;}
+  .hint{font-size:12.5px; color:var(--ink-soft); line-height:1.6; margin-bottom:18px;}
+  .logout-link{
+    display:inline-block;
+    margin-top:14px;
+    color:var(--ink-soft);
+    font-size:12px;
+    text-decoration:underline;
+    cursor:pointer;
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>הוספה לרשימת הקניות</h1>
-  <div class="list-name" id="listName">טוענים...</div>
-  <div class="add-row">
-    <input type="text" id="itemInput" placeholder="מה להוסיף?" autofocus>
-    <button id="addBtn">הוספה</button>
-  </div>
-  <div class="status" id="status"></div>
-  <div class="recent" id="recentList"></div>
-  <a class="open-app" href="index.html">פתחו את האפליקציה המלאה</a>
-</div>
+<div class="wrap" id="app">טוענים...</div>
 <script>
 const SUPABASE_URL = 'https://pznpibrlcbjpcoxagxns.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6bnBpYnJsY2JqcGNveGFneG5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5NjEzMjUsImV4cCI6MjEwMjUzNzMyNX0.dvfKlGyI1U_E7G5POQJkLn28gky7cTyJbQqT3Mie_YU';
 const sbClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+const appEl = document.getElementById('app');
 
-function norm(s){ return s.trim().replace(/\s+/g,' '); }
+function norm(s){ return (s||'').trim().replace(/\s+/g,' '); }
 
-function loadShoppingLists(){
-  let lists = JSON.parse(localStorage.getItem('shopping_lists')||'null');
-  if(!lists) lists = { main: { name:'רשימה ראשית', items:[], bought:[], syncCode:null } };
-  const activeId = localStorage.getItem('active_shopping_list') || Object.keys(lists)[0];
-  if(!lists[activeId]) return { lists, activeId: Object.keys(lists)[0] };
-  return { lists, activeId };
+function renderLogin(prefillStatus){
+  appEl.innerHTML = `
+    <h1>הוספה לרשימת הקניות</h1>
+    <p class="hint">כדי שהוספות כאן יגיעו לאפליקציה המלאה, מתחברים פעם אחת עם אותו חשבון (אימייל+סיסמה) שכבר יש לכם שם.</p>
+    <div class="login-box">
+      <input type="email" id="email" placeholder="אימייל">
+      <input type="password" id="password" placeholder="סיסמה">
+      <div class="login-btns">
+        <button id="loginBtn">התחברות</button>
+      </div>
+    </div>
+    <div class="status" id="status">${prefillStatus||''}</div>
+  `;
+  document.getElementById('loginBtn').onclick = async ()=>{
+    const email = norm(document.getElementById('email').value);
+    const password = document.getElementById('password').value;
+    const status = document.getElementById('status');
+    status.className = 'status';
+    status.textContent = 'מתחברים...';
+    try{
+      const { error } = await sbClient.auth.signInWithPassword({ email, password });
+      if(error) throw error;
+      await start();
+    }catch(e){
+      status.className = 'status err';
+      status.textContent = 'שגיאה: ' + (e.message || 'התחברות נכשלה');
+    }
+  };
 }
 
-function renderRecent(items){
-  const el = document.getElementById('recentList');
-  const recent = items.slice(-5).reverse();
-  el.innerHTML = recent.map(i=>`<span>${i}</span>`).join('');
+function pickTargetList(payload){
+  const lists = (payload && Object.keys(payload).length) ? payload : { main: { name:'רשימה ראשית', items:[], bought:[] } };
+  const key = lists.main ? 'main' : Object.keys(lists)[0];
+  return { lists, key };
 }
 
-async function pushToAccount(lists){
-  if(!sbClient) return;
-  try{
-    const { data:{ session } } = await sbClient.auth.getSession();
-    if(!session) return;
-    const rowId = localStorage.getItem('active_shopping_row');
-    if(!rowId) return;
-    await sbClient.from('user_data').update({
-      payload: lists,
-      updated_at: new Date().toISOString()
-    }).eq('id', rowId);
-  }catch(e){ /* offline, or not logged in on this device — local save already succeeded */ }
-}
-
-function init(){
-  const { lists, activeId } = loadShoppingLists();
-  document.getElementById('listName').textContent = 'מוסיפים אל: ' + (lists[activeId].name || 'רשימה ראשית');
-  renderRecent(lists[activeId].items || []);
-
+async function renderAddScreen(user, row){
+  const { lists, key } = pickTargetList(row.payload);
+  appEl.innerHTML = `
+    <h1>הוספה לרשימת הקניות</h1>
+    <div class="list-name">מוסיפים אל: ${lists[key].name || 'רשימה ראשית'} (${user.email})</div>
+    <div class="add-row">
+      <input type="text" id="itemInput" placeholder="מה להוסיף?" autofocus>
+      <button id="addBtn">הוספה</button>
+    </div>
+    <div class="status" id="status"></div>
+    <div class="recent" id="recentList"></div>
+    <a class="open-app" href="index.html">פתחו את האפליקציה המלאה</a>
+    <br>
+    <span class="logout-link" id="logoutLink">התנתקות</span>
+  `;
   const input = document.getElementById('itemInput');
   const status = document.getElementById('status');
+
+  function renderRecent(items){
+    const el = document.getElementById('recentList');
+    el.innerHTML = items.slice(-5).reverse().map(i=>`<span>${i}</span>`).join('');
+  }
+  renderRecent(lists[key].items || []);
 
   document.getElementById('addBtn').onclick = async ()=>{
     const val = norm(input.value);
     if(!val) return;
-    const { lists, activeId } = loadShoppingLists();
-    if(!lists[activeId].items.includes(val)) lists[activeId].items.push(val);
-    lists[activeId].bought = (lists[activeId].bought||[]).filter(i=>i!==val);
-    localStorage.setItem('shopping_lists', JSON.stringify(lists));
-
-    // also track for the main app's autocomplete learning
+    input.disabled = true;
+    status.className = 'status';
+    status.textContent = 'שומרים...';
     try{
-      const usage = JSON.parse(localStorage.getItem('item_usage')||'{}');
-      usage[val] = (usage[val]||0)+1;
-      localStorage.setItem('item_usage', JSON.stringify(usage));
-    }catch(e){}
-
-    status.textContent = `✓ "${val}" נוסף`;
-    input.value = '';
+      // re-fetch fresh in case it changed elsewhere since this page loaded
+      const { data: fresh, error: fetchErr } = await sbClient.from('user_data').select('*').eq('id', row.id).single();
+      if(fetchErr) throw fetchErr;
+      const { lists: freshLists, key: freshKey } = pickTargetList(fresh.payload);
+      if(!freshLists[freshKey].items) freshLists[freshKey].items = [];
+      if(!freshLists[freshKey].items.includes(val)) freshLists[freshKey].items.push(val);
+      freshLists[freshKey].bought = (freshLists[freshKey].bought||[]).filter(i=>i!==val);
+      const { error: updateErr } = await sbClient.from('user_data').update({
+        payload: freshLists,
+        updated_at: new Date().toISOString()
+      }).eq('id', row.id);
+      if(updateErr) throw updateErr;
+      row.payload = freshLists;
+      status.textContent = `✓ "${val}" נוסף`;
+      input.value = '';
+      renderRecent(freshLists[freshKey].items);
+    }catch(e){
+      status.className = 'status err';
+      status.textContent = 'שגיאה בשמירה — נסו שוב (' + (e.message||'') + ')';
+    }
+    input.disabled = false;
     input.focus();
-    renderRecent(lists[activeId].items);
-    pushToAccount(lists);
-    setTimeout(()=>{ status.textContent=''; }, 2500);
+    setTimeout(()=>{ if(!status.className.includes('err')) status.textContent=''; }, 2500);
   };
   input.addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('addBtn').click(); });
+
+  document.getElementById('logoutLink').onclick = async ()=>{
+    await sbClient.auth.signOut();
+    renderLogin();
+  };
 }
-init();
+
+async function start(){
+  appEl.textContent = 'טוענים...';
+  const { data:{ session } } = await sbClient.auth.getSession();
+  if(!session){ renderLogin(); return; }
+  const user = session.user;
+  try{
+    const { data: rows, error } = await sbClient.from('user_data').select('*').eq('kind','shopping_lists');
+    if(error) throw error;
+    let row = (rows||[]).find(r=>r.owner_id===user.id) || (rows||[])[0];
+    if(!row){
+      const { data: created, error: insErr } = await sbClient.from('user_data').insert({
+        owner_id: user.id, owner_email: user.email, kind:'shopping_lists',
+        payload: { main: { name:'רשימה ראשית', items:[], bought:[] } }
+      }).select().single();
+      if(insErr) throw insErr;
+      row = created;
+    }
+    await renderAddScreen(user, row);
+  }catch(e){
+    appEl.innerHTML = `<h1>הוספה לרשימת הקניות</h1><div class="status err">שגיאה בטעינה: ${e.message||''}</div>`;
+  }
+}
+
+if(!sbClient){
+  appEl.innerHTML = '<h1>הוספה לרשימת הקניות</h1><div class="status err">טעינת מודול ההתחברות נכשלה — בדקו חיבור לאינטרנט ורעננו.</div>';
+} else {
+  start();
+}
 </script>
 </body>
 </html>
