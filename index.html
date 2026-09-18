@@ -4229,6 +4229,19 @@ renderCatTabs();
 renderAll();
 initAccount();
 
+// Handle the "quick add to shopping list" home-screen shortcut
+(function handleShortcutParams(){
+  const params = new URLSearchParams(location.search);
+  if(params.get('action') === 'addToShopping'){
+    switchTab('shopping');
+    setTimeout(()=>{
+      const input = document.getElementById('shopAddInput');
+      if(input) input.focus();
+    }, 300);
+    history.replaceState(null, '', location.pathname);
+  }
+})();
+
 // Register the service worker for offline support and real installability.
 // Requires service-worker.js (and manifest.json + icons) to be hosted in the same folder as this file.
 if('serviceWorker' in navigator){
