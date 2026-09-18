@@ -3,7 +3,7 @@
   "short_name": "במקרר",
   "description": "נהלו את המקרר שלכם, קבלו הצעות למתכונים, ונהלו רשימות קניות משותפות",
   "start_url": "./index.html",
-  "scope": "./",
+  "scope": "./index.html",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#F6F3EA",
@@ -14,5 +14,14 @@
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "הוספה מהירה לרשימת קניות",
+      "short_name": "הוספה לרשימה",
+      "description": "פתיחת האפליקציה ישר עם שדה הוספה לרשימת הקניות",
+      "url": "./index.html?action=addToShopping",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    }
   ]
 }
