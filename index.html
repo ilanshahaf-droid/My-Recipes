@@ -718,6 +718,15 @@
     color:var(--ink);
     font-family:'Assistant',sans-serif;
   }
+  .sm-group-title{
+    font-family:'Frank Ruhl Libre',serif;
+    font-weight:700;
+    font-size:15px;
+    color:var(--herb);
+    margin:20px 0 4px;
+  }
+  .sm-group-title:first-child{margin-top:0;}
+  .sm-icon{font-size:22px; flex-shrink:0;}
   .sm-row{
     display:flex;
     align-items:center;
@@ -3549,15 +3558,29 @@ function renderShoppingModeList(){
     el.innerHTML = '<div class="sm-empty">הרשימה ריקה</div>';
     return;
   }
-  const sorted = [...items].sort((a,b)=> (boughtItems.has(a)?1:0) - (boughtItems.has(b)?1:0));
-  el.innerHTML = sorted.map(name=>{
-    const bought = boughtItems.has(name);
-    return `
-      <div class="sm-row${bought?' bought':''}" data-item="${name}">
-        <span class="sm-check">${bought?'✓':''}</span>
-        <span class="sm-name">${name}</span>
-      </div>`;
-  }).join('');
+  const catOrder = Object.keys(CATALOG).concat(['אחר']);
+  const groups = {};
+  items.forEach(item=>{
+    const cat = catOf(item);
+    if(!groups[cat]) groups[cat] = [];
+    groups[cat].push(item);
+  });
+  let html = '';
+  catOrder.forEach(cat=>{
+    if(!groups[cat] || groups[cat].length===0) return;
+    const sorted = groups[cat].sort((a,b)=> (boughtItems.has(a)?1:0) - (boughtItems.has(b)?1:0) || a.localeCompare(b,'he'));
+    html += `<div class="sm-group-title">${cat}</div>`;
+    html += sorted.map(name=>{
+      const bought = boughtItems.has(name);
+      return `
+        <div class="sm-row${bought?' bought':''}" data-item="${name}">
+          <span class="sm-check">${bought?'✓':''}</span>
+          <span class="sm-icon">${iconOf(name)}</span>
+          <span class="sm-name">${name}</span>
+        </div>`;
+    }).join('');
+  });
+  el.innerHTML = html;
   el.querySelectorAll('.sm-row').forEach(row=>{
     row.onclick = ()=>{
       const name = row.dataset.item;
