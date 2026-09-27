@@ -192,6 +192,27 @@
     font-size:14px;
     font-weight:600;
   }
+  .chip.exp-soon{background:var(--mustard-soft); color:var(--mustard);}
+  .chip.exp-expired{background:var(--brick-soft); color:var(--brick);}
+  .chip-cal{
+    background:none;
+    border:none;
+    font-size:14px;
+    cursor:pointer;
+    padding:0;
+    opacity:.75;
+  }
+  .chip-cal:hover{opacity:1;}
+  .expiry-alert{
+    background:var(--mustard-soft);
+    color:var(--mustard);
+    border-radius:12px;
+    padding:10px 14px;
+    font-size:13px;
+    line-height:1.6;
+    margin-bottom:12px;
+  }
+  .expiry-alert.has-expired{background:var(--brick-soft); color:var(--brick);}
   .chip button{
     background:none;
     border:none;
@@ -413,6 +434,7 @@
     border-color:var(--brick);
   }
   .cooked-badge{color:var(--herb); font-weight:700;}
+  .expiring-badge{color:var(--mustard); font-weight:700;}
   .fav-star{
     color:var(--star);
     font-size:18px;
@@ -1540,6 +1562,11 @@
       <div id="accountBox"></div>
     </section>
     <section>
+      <h2>ניהול רשימת קניות</h2>
+      <p class="settings-hint">סנכרון, ייבוא, שיתוף וניקוי של הרשימה הפעילה. בוחרים איזו רשימה פעילה בלשונית "קניות".</p>
+      <div id="shoppingManageBox"></div>
+    </section>
+    <section>
       <h2>ייבוא מתכונים מקובץ</h2>
       <p class="settings-hint">טוענים קובץ Word (.docx) או PDF שמכיל מתכון אחד. המערכת תנסה לזהות כותרת, מצרכים והוראות הכנה — ותאפשר לכם לתקן לפני השמירה.</p>
       <input type="file" id="importFileInput" accept=".docx,.pdf" style="display:none;">
@@ -1548,9 +1575,14 @@
       <div id="importForm"></div>
     </section>
     <section>
-      <h2>מתכונים שיובאו</h2>
+      <div class="section-head">
+        <h2 style="margin:0;">מתכונים שיובאו</h2>
+        <button class="ranout-toggle" id="toggleImportedRecipesBtn">▾</button>
+      </div>
       <div id="recipeSyncBox"></div>
-      <div id="customRecipesList"></div>
+      <div id="customRecipesListWrap" style="display:none;">
+        <div id="customRecipesList"></div>
+      </div>
     </section>
     <section>
       <h2>סיווג מצרכים</h2>
@@ -1561,7 +1593,13 @@
         <input type="text" id="catAssignIcon" placeholder="אייקון (אימוג׳י)" style="flex:0 1 130px; border:1px solid var(--line); border-radius:10px; padding:8px 10px; font-size:15px; text-align:center; background:var(--surface);">
         <button id="catAssignBtn">שמרו</button>
       </div>
-      <div id="catOverridesList"></div>
+      <div class="section-head" style="margin-top:14px;">
+        <span class="settings-hint" style="margin:0; font-weight:700;">מצרכים שהוגדרו</span>
+        <button class="ranout-toggle" id="toggleAddedItemsBtn">▾</button>
+      </div>
+      <div id="catOverridesListWrap" style="display:none;">
+        <div id="catOverridesList"></div>
+      </div>
     </section>
     <section>
       <h2>איפוס יומי של המקרר</h2>
@@ -1606,6 +1644,7 @@
   <div class="app-modal-box">
     <div class="app-modal-message" id="appModalMessage"></div>
     <input type="text" class="app-modal-input" id="appModalInput" style="display:none;">
+    <textarea class="app-modal-input" id="appModalTextarea" rows="6" style="display:none;"></textarea>
     <div class="app-modal-actions">
       <button id="appModalCancel" class="secondary">ביטול</button>
       <button id="appModalOk">אישור</button>
@@ -1976,6 +2015,25 @@ function isVegetarian(r){ return !r.ingredients.some(i=>MEAT_INGREDIENTS.include
 function minutesOf(r){ const m = r.time.match(/\d+/); return m? parseInt(m[0]) : 999; }
 
 let fridge = new Set(JSON.parse(localStorage.getItem('fridge_items')||'[]'));
+let fridgeExpiry = JSON.parse(localStorage.getItem('fridge_expiry')||'{}'); // {itemName: 'YYYY-MM-DD'}
+function setExpiry(item, dateStr){
+  if(dateStr) fridgeExpiry[item] = dateStr; else delete fridgeExpiry[item];
+  localStorage.setItem('fridge_expiry', JSON.stringify(fridgeExpiry));
+  scheduleAppStatePush();
+}
+function daysUntil(dateStr){
+  if(!dateStr) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const target = new Date(dateStr + 'T00:00:00');
+  return Math.round((target - today) / 86400000);
+}
+function expiryStatus(item){
+  const d = daysUntil(fridgeExpiry[item]);
+  if(d === null) return null;
+  if(d < 0) return 'expired';
+  if(d <= 2) return 'soon';
+  return 'ok';
+}
 let cookedSet = new Set(JSON.parse(localStorage.getItem('cooked_recipes')||'[]'));
 let cookHistory = JSON.parse(localStorage.getItem('cook_history')||'{}'); // {name: [iso dates]}
 let shoppingLists = JSON.parse(localStorage.getItem('shopping_lists')||'null');
@@ -2017,6 +2075,7 @@ let appStatePushTimer = null;
 function collectAppState(){
   return {
     fridge: [...fridge],
+    fridgeExpiry,
     cookedSet: [...cookedSet],
     cookHistory,
     favorites: [...favorites],
@@ -2035,6 +2094,7 @@ function applyAppStateRow(row){
   localStorage.setItem('active_state_row', row.id);
   const p = row.payload || {};
   fridge = new Set(p.fridge || []);
+  fridgeExpiry = p.fridgeExpiry || {};
   cookedSet = new Set(p.cookedSet || []);
   cookHistory = p.cookHistory || {};
   favorites = new Set(p.favorites || []);
@@ -2047,6 +2107,7 @@ function applyAppStateRow(row){
   autoResetEnabled = !!p.autoResetEnabled;
   protectedCategories = p.protectedCategories || ["מזווה","תיבול ואפייה"];
   localStorage.setItem('fridge_items', JSON.stringify([...fridge]));
+  localStorage.setItem('fridge_expiry', JSON.stringify(fridgeExpiry));
   localStorage.setItem('cooked_recipes', JSON.stringify([...cookedSet]));
   localStorage.setItem('cook_history', JSON.stringify(cookHistory));
   localStorage.setItem('favorites', JSON.stringify([...favorites]));
@@ -2435,8 +2496,8 @@ function closeAppModal(){
 function showConfirmModal(message, onYes){
   const overlay = document.getElementById('appModalOverlay');
   document.getElementById('appModalMessage').textContent = message;
-  const input = document.getElementById('appModalInput');
-  input.style.display = 'none';
+  document.getElementById('appModalInput').style.display = 'none';
+  document.getElementById('appModalTextarea').style.display = 'none';
   overlay.classList.add('active');
   document.getElementById('appModalOk').onclick = ()=>{ closeAppModal(); onYes(); };
   document.getElementById('appModalCancel').onclick = closeAppModal;
@@ -2444,7 +2505,9 @@ function showConfirmModal(message, onYes){
 function showPromptModal(message, onSubmit, defaultValue){
   const overlay = document.getElementById('appModalOverlay');
   document.getElementById('appModalMessage').textContent = message;
+  document.getElementById('appModalTextarea').style.display = 'none';
   const input = document.getElementById('appModalInput');
+  input.type = 'text';
   input.style.display = 'block';
   input.value = defaultValue || '';
   overlay.classList.add('active');
@@ -2458,6 +2521,50 @@ function showPromptModal(message, onSubmit, defaultValue){
   document.getElementById('appModalOk').onclick = submit;
   document.getElementById('appModalCancel').onclick = closeAppModal;
   input.onkeydown = (e)=>{ if(e.key==='Enter') submit(); };
+}
+function showTextareaModal(message, onSubmit, defaultValue){
+  const overlay = document.getElementById('appModalOverlay');
+  document.getElementById('appModalMessage').textContent = message;
+  document.getElementById('appModalInput').style.display = 'none';
+  const ta = document.getElementById('appModalTextarea');
+  ta.style.display = 'block';
+  ta.value = defaultValue || '';
+  overlay.classList.add('active');
+  setTimeout(()=>ta.focus(), 50);
+  const submit = ()=>{
+    const val = (ta.value||'').trim();
+    if(!val) return;
+    closeAppModal();
+    onSubmit(val);
+  };
+  document.getElementById('appModalOk').onclick = submit;
+  document.getElementById('appModalCancel').onclick = closeAppModal;
+}
+function showDateModal(message, onSubmit, defaultValue, onClear){
+  const overlay = document.getElementById('appModalOverlay');
+  document.getElementById('appModalMessage').textContent = message;
+  document.getElementById('appModalTextarea').style.display = 'none';
+  const input = document.getElementById('appModalInput');
+  input.type = 'date';
+  input.style.display = 'block';
+  input.value = defaultValue || '';
+  overlay.classList.add('active');
+  const okBtn = document.getElementById('appModalOk');
+  const cancelBtn = document.getElementById('appModalCancel');
+  const submit = ()=>{
+    if(!input.value) return;
+    closeAppModal();
+    input.type = 'text';
+    onSubmit(input.value);
+  };
+  okBtn.onclick = submit;
+  cancelBtn.textContent = onClear ? 'נקו תאריך' : 'ביטול';
+  cancelBtn.onclick = ()=>{
+    closeAppModal();
+    input.type = 'text';
+    cancelBtn.textContent = 'ביטול';
+    if(onClear) onClear();
+  };
 }
 
 function createShoppingList(){
@@ -2817,7 +2924,19 @@ function renderFridgeStrip(){
     wrap.innerHTML = '<div class="fridge-empty">המקרר עדיין ריק — התחילו לסמן למטה</div>';
     return;
   }
+
+  const expiredItems = [...fridge].filter(i=>expiryStatus(i)==='expired');
+  const soonItems = [...fridge].filter(i=>expiryStatus(i)==='soon');
+  let expiryAlert = '';
+  if(expiredItems.length || soonItems.length){
+    const parts = [];
+    if(expiredItems.length) parts.push(`<b>${expiredItems.length} פגו:</b> ${expiredItems.join(', ')}`);
+    if(soonItems.length) parts.push(`<b>${soonItems.length} עומדים לפוג:</b> ${soonItems.join(', ')}`);
+    expiryAlert = `<div class="expiry-alert${expiredItems.length?' has-expired':''}">${parts.join(' · ')}</div>`;
+  }
+
   wrap.innerHTML = `
+    ${expiryAlert}
     <div class="fridge-summary">
       <span class="fridge-count">יש לכם <b>${fridge.size}</b> מצרכים</span>
       <div class="fridge-actions">
@@ -2833,10 +2952,23 @@ function renderFridgeStrip(){
   `;
   const inner = document.getElementById('fridgePanelInner');
   [...fridge].forEach(item=>{
+    const status = expiryStatus(item);
     const chip = document.createElement('span');
-    chip.className='chip';
-    chip.innerHTML = `${item} <button aria-label="הסרה">×</button>`;
-    chip.querySelector('button').onclick = ()=>{
+    chip.className = 'chip' + (status==='expired' ? ' exp-expired' : status==='soon' ? ' exp-soon' : '');
+    const d = fridgeExpiry[item] ? daysUntil(fridgeExpiry[item]) : null;
+    const dateLabel = d===null ? '' : d<0 ? ` (פג לפני ${-d} ימים)` : d===0 ? ' (פג היום)' : ` (עוד ${d} ימים)`;
+    chip.innerHTML = `<button class="chip-cal" aria-label="תאריך תפוגה">📅</button>${item}${dateLabel} <button aria-label="הסרה">×</button>`;
+    chip.querySelector('.chip-cal').onclick = (e)=>{
+      e.stopPropagation();
+      showDateModal(`תאריך תפוגה עבור "${item}":`, (dateStr)=>{
+        setExpiry(item, dateStr);
+        renderAll();
+      }, fridgeExpiry[item] || '', ()=>{
+        setExpiry(item, null);
+        renderAll();
+      });
+    };
+    chip.querySelector('button[aria-label="הסרה"]').onclick = ()=>{
       if(ranOutMode){
         fridge.delete(item);
         shoppingList.add(item);
@@ -2847,6 +2979,7 @@ function renderFridgeStrip(){
         saveBought();
       } else {
         fridge.delete(item);
+        setExpiry(item, null);
         saveFridge();
       }
       renderAll();
@@ -3158,12 +3291,13 @@ function renderRecipes(){
     const isFull = r.total>0 && r.missing.length===0;
     const cooked = cookedSet.has(r.name);
     const isFav = favorites.has(r.name);
+    const usesExpiring = r.have.some(i=>{ const s = expiryStatus(i); return s==='soon' || s==='expired'; });
     card.innerHTML = `
       <div class="recipe-head">
         <h3>${isFav?'★ ':''}${r.name}</h3>
         ${fridge.size>0 ? `<span class="match-frac ${isFull?'match-full':'match-partial'}">${r.haveCount}/${r.total} מצרכים</span>` : ''}
       </div>
-      <div class="recipe-meta">${r.time}${isFull? ' · יש לכם הכל' : ''}${cooked? ' · <span class="cooked-badge">✓ בישלתם</span>' : ''}</div>
+      <div class="recipe-meta">${r.time}${isFull? ' · יש לכם הכל' : ''}${cooked? ' · <span class="cooked-badge">✓ בישלתם</span>' : ''}${usesExpiring? ' · <span class="expiring-badge">♻️ מנצל מה שעומד לפוג</span>' : ''}</div>
       <div class="recipe-tags">
         <span class="tag">${r.cuisine||'כללי'}</span>
         <span class="tag">${r.difficulty||'קל'}</span>
@@ -3333,8 +3467,8 @@ function renderDailyRecipe(){
 function renderShoppingPanel(){
   const el = document.getElementById('shoppingPanel');
 
-  // List switcher + sync box + toolbar for adding
-  let html = renderListSwitcher() + renderSyncBoxHTML() + `
+  // List switcher + toolbar for adding — sync/import/share now live in Settings
+  let html = renderListSwitcher() + `
     <div class="shop-toolbar">
       <input type="text" id="shopAddInput" placeholder="הוסיפו פריט לרשימה...">
       <button id="shopAddBtn">הוספה</button>
@@ -3344,17 +3478,10 @@ function renderShoppingPanel(){
 
   if(shoppingList.size===0){
     html += '<p class="shopping-empty">הרשימה ריקה — הוסיפו מצרכים חסרים ממתכון או הקלידו למעלה</p>';
-    html += `
-      <div class="shop-footer">
-        <button id="importShopBtn">📥 ייבוא רשימה</button>
-        <button id="shareCodeBtn">🔗 קוד שיתוף</button>
-      </div>
-    `;
     el.innerHTML = html;
     wireListSwitcher();
-    wireSyncBox();
     wireShopToolbar();
-    wireShopFooterEmpty();
+    renderShopManageBox();
     return;
   }
 
@@ -3392,20 +3519,10 @@ function renderShoppingPanel(){
     </button>`;
   }
 
-  html += `
-    <div class="shop-footer">
-      <button class="primary" id="copyShoppingBtn">📋 העתקה</button>
-      <button id="whatsappShareBtn">💬 וואטסאפ</button>
-      <button id="importShopBtn">📥 ייבוא</button>
-      <button id="shareCodeBtn">🔗 קוד שיתוף</button>
-      <button id="clearBoughtBtn">נקו מסומנים</button>
-      <button id="clearShoppingBtn">נקו הכל</button>
-    </div>
-  `;
   el.innerHTML = html;
   wireListSwitcher();
-  wireSyncBox();
   wireShopToolbar();
+  renderShopManageBox();
 
   el.querySelectorAll('.shop-item').forEach(row=>{
     const item = row.dataset.item;
@@ -3433,6 +3550,25 @@ function renderShoppingPanel(){
       renderShoppingPanel();
     };
   }
+}
+
+function renderShopManageBox(){
+  const el = document.getElementById('shoppingManageBox');
+  if(!el) return;
+  const catOrder = Object.keys(CATALOG).concat(['אחר']);
+  el.innerHTML = `
+    <div class="settings-hint" style="margin-bottom:12px;">הפעולות כאן חלות על הרשימה הפעילה: <b>${getActiveList().name}</b></div>
+    ${renderSyncBoxHTML()}
+    <div class="shop-footer">
+      <button class="primary" id="copyShoppingBtn">📋 העתקה</button>
+      <button id="whatsappShareBtn">💬 וואטסאפ</button>
+      <button id="importShopBtn">📥 ייבוא</button>
+      <button id="shareCodeBtn">🔗 קוד שיתוף</button>
+      <button id="clearBoughtBtn">נקו מסומנים</button>
+      <button id="clearShoppingBtn">נקו הכל</button>
+    </div>
+  `;
+  wireSyncBox();
 
   document.getElementById('copyShoppingBtn').onclick = ()=>{
     const lines = ['רשימת קניות:'];
@@ -3459,6 +3595,9 @@ function renderShoppingPanel(){
     window.open('https://wa.me/?text='+encodeURIComponent(lines.join('\n')), '_blank');
   };
 
+  document.getElementById('importShopBtn').onclick = importShoppingList;
+  document.getElementById('shareCodeBtn').onclick = shareShoppingCode;
+
   document.getElementById('clearBoughtBtn').onclick = ()=>{
     boughtItems.forEach(i=>shoppingList.delete(i));
     boughtItems.clear();
@@ -3475,9 +3614,6 @@ function renderShoppingPanel(){
       renderShoppingPanel();
     });
   };
-
-  document.getElementById('importShopBtn').onclick = importShoppingList;
-  document.getElementById('shareCodeBtn').onclick = shareShoppingCode;
 }
 
 function wireShopToolbar(){
@@ -3509,34 +3645,27 @@ function wireShopToolbar(){
   }
 }
 
-function wireShopFooterEmpty(){
-  const imp = document.getElementById('importShopBtn');
-  if(imp) imp.onclick = importShoppingList;
-  const sh = document.getElementById('shareCodeBtn');
-  if(sh) sh.onclick = shareShoppingCode;
-}
-
 function importShoppingList(){
-  const raw = prompt('הדביקו כאן רשימת קניות (שורה לכל פריט, או קוד שיתוף):');
-  if(!raw) return;
-  try{
-    // try base64 share code
-    if(raw.trim().startsWith('SHOP:')){
-      const decoded = JSON.parse(decodeURIComponent(atob(raw.trim().slice(5))));
-      if(Array.isArray(decoded)){
-        decoded.forEach(i=>{ shoppingList.add(norm(i)); boughtItems.delete(norm(i)); });
-        saveShoppingList(); saveBought();
-        renderShoppingPanel();
-        alert('יובאו '+decoded.length+' פריטים');
-        return;
+  showTextareaModal('הדביקו כאן רשימת קניות (שורה לכל פריט, או קוד שיתוף):', (raw)=>{
+    try{
+      // try base64 share code
+      if(raw.trim().startsWith('SHOP:')){
+        const decoded = JSON.parse(decodeURIComponent(atob(raw.trim().slice(5))));
+        if(Array.isArray(decoded)){
+          decoded.forEach(i=>{ shoppingList.add(norm(i)); boughtItems.delete(norm(i)); });
+          saveShoppingList(); saveBought();
+          renderShoppingPanel();
+          alert('יובאו '+decoded.length+' פריטים');
+          return;
+        }
       }
-    }
-  }catch(e){}
-  const lines = raw.split(/[\n,،]+/).map(s=>norm(s.replace(/^[☐✓•\-\*\d\.\s]+/,''))).filter(Boolean);
-  lines.forEach(i=>{ shoppingList.add(i); boughtItems.delete(i); });
-  saveShoppingList(); saveBought();
-  renderShoppingPanel();
-  alert('יובאו '+lines.length+' פריטים');
+    }catch(e){}
+    const lines = raw.split(/[\n,،]+/).map(s=>norm(s.replace(/^[☐✓•\-\*\d\.\s]+/,''))).filter(Boolean);
+    lines.forEach(i=>{ shoppingList.add(i); boughtItems.delete(i); });
+    saveShoppingList(); saveBought();
+    renderShoppingPanel();
+    alert('יובאו '+lines.length+' פריטים');
+  });
 }
 
 function shareShoppingCode(){
@@ -3867,6 +3996,30 @@ document.getElementById('weekToggleBtn').onclick = ()=>{
   renderWeekPlan();
 };
 
+let importedRecipesOpen = localStorage.getItem('imported_recipes_open') === '1';
+let addedItemsOpen = localStorage.getItem('added_items_open') === '1';
+function applyCollapsibleState(){
+  const rWrap = document.getElementById('customRecipesListWrap');
+  const rBtn = document.getElementById('toggleImportedRecipesBtn');
+  if(rWrap){ rWrap.style.display = importedRecipesOpen ? 'block' : 'none'; }
+  if(rBtn){ rBtn.textContent = importedRecipesOpen ? '▴' : '▾'; }
+  const iWrap = document.getElementById('catOverridesListWrap');
+  const iBtn = document.getElementById('toggleAddedItemsBtn');
+  if(iWrap){ iWrap.style.display = addedItemsOpen ? 'block' : 'none'; }
+  if(iBtn){ iBtn.textContent = addedItemsOpen ? '▴' : '▾'; }
+}
+document.getElementById('toggleImportedRecipesBtn').onclick = ()=>{
+  importedRecipesOpen = !importedRecipesOpen;
+  localStorage.setItem('imported_recipes_open', importedRecipesOpen ? '1' : '0');
+  applyCollapsibleState();
+};
+document.getElementById('toggleAddedItemsBtn').onclick = ()=>{
+  addedItemsOpen = !addedItemsOpen;
+  localStorage.setItem('added_items_open', addedItemsOpen ? '1' : '0');
+  applyCollapsibleState();
+};
+applyCollapsibleState();
+
 document.getElementById('themeBtn').onclick = ()=>{
   isDark = !isDark;
   saveTheme();
@@ -4022,23 +4175,67 @@ function renderCustomRecipesList(){
 }
 
 function parseRecipeText(text, fallbackTitle){
-  const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
-  const title = lines[0] || fallbackTitle || 'מתכון מיובא';
-  const ingIdx = lines.findIndex(l=>/^(מצרכים|רכיבים|ingredients)/i.test(l));
-  const stepsIdx = lines.findIndex(l=>/^(הכנה|אופן ההכנה|אופן הכנה|הוראות|צעדי הכנה|צעדים|steps|instructions|method)/i.test(l));
+  const JUNK_PATTERNS = [
+    /^שתפ(ו|י)/, /^שיתוף/, /^הדפיס(ו|י)/, /^הדפסה/, /^שמר(ו|י) מתכון/, /^דרג(ו|י)/, /^דירוג/,
+    /^תגוב(ות|ה)/, /^כתב(ו|י) תגובה/, /^עקב(ו|י) אחרינו/, /^הירשמ(ו|י)/, /^לניוזלטר/,
+    /^פרסומת/, /^מודעה/, /^קרדיט/, /^צילום[: ]/, /^כל הזכויות שמורות/, /^©/,
+    /^עוד מתכונים/, /^מתכונים נוספים/, /^קרא(ו)? עוד/, /^המשך קריאה/,
+    /^\d+\s*(תגובות|לייקים|שיתופים|צפיות)/, /^(פייסבוק|אינסטגרם|טוויטר|וואטסאפ|טיקטוק)$/,
+    /^שלח(ו)? לחבר/, /^הצטרפ(ו|י)/, /^למתכון המלא/, /^לחצ(ו|י) כאן/, /^קישור/, /^מקור[: ]/,
+    /^\[.*\]$/, /^advertisement$/i, /^cookies?/i
+  ];
+  const isJunk = (line)=> line.length<=1 || JUNK_PATTERNS.some(re=>re.test(line));
+
+  const rawLines = text.split('\n').map(l=>l.trim()).filter(Boolean).filter(l=>!isJunk(l));
+  const title = rawLines[0] || fallbackTitle || 'מתכון מיובא';
+
+  const ING_HEADER = /^(מצרכים|רכיבים|מה שצריך|מה צריך)\s*:?\s*(\(.*\))?$/i;
+  const ING_SUBHEADER = /^ל(בצק|מילוי|ציפוי|רוטב|תערובת|קישוט|טיגון|אפייה|מרינדה|ציפוי החיצוני)\s*:?\s*$/;
+  const STEP_HEADER = /^(הכנה|אופן ה?הכנה|הוראות ה?הכנה|צעדי ה?הכנה|הוראות|אופן ביצוע|שלבי ה?הכנה|שלב \d+|steps|instructions|method)\s*:?\s*$/i;
+
+  const cleanIngredient = (l)=> l.replace(/^[-•*)\s]+/, '').trim();
+  const cleanStep = (l)=> l
+    .replace(/^שלב\s*\d+\s*[:.]?\s*/,'')
+    .replace(/^[-•*\d.)\s]+/, '')
+    .trim();
+
   let ingredients = [];
   let steps = [];
-  const clean = (l)=> l.replace(/^[-•*\d.)\s]+/, '').trim();
-  if(ingIdx > -1){
-    const end = stepsIdx > ingIdx ? stepsIdx : lines.length;
-    ingredients = lines.slice(ingIdx+1, end).map(clean).filter(Boolean);
+  let mode = 'none'; // 'none' | 'ing' | 'steps'
+
+  for(let i=1; i<rawLines.length; i++){
+    const line = rawLines[i];
+    if(ING_HEADER.test(line)){ mode = 'ing'; continue; }
+    if(STEP_HEADER.test(line)){ mode = 'steps'; continue; }
+    if(ING_SUBHEADER.test(line)){
+      mode = 'ing';
+      ingredients.push('— ' + line.replace(/:$/,'') + ' —');
+      continue;
+    }
+    if(mode === 'ing') ingredients.push(cleanIngredient(line));
+    else if(mode === 'steps') steps.push(cleanStep(line));
   }
-  if(stepsIdx > -1){
-    steps = lines.slice(stepsIdx+1).map(clean).filter(Boolean);
+  ingredients = ingredients.filter(Boolean);
+  steps = steps.filter(Boolean);
+
+  // Consolidate obviously fragmented lines (very short lines are usually a mid-sentence
+  // break from PDF column extraction, not a real standalone step) by merging into the previous one.
+  function consolidate(arr, minLen){
+    const out = [];
+    arr.forEach(line=>{
+      if(out.length && line.length < minLen && !line.startsWith('—')){
+        out[out.length-1] = out[out.length-1] + ' ' + line;
+      } else {
+        out.push(line);
+      }
+    });
+    return out;
   }
-  if(ingIdx === -1 && stepsIdx === -1){
-    // No recognizable section headers — leave ingredients empty, put the rest as steps for manual cleanup
-    steps = lines.slice(1).map(clean).filter(Boolean);
+  steps = consolidate(steps, 20);
+
+  if(mode === 'none'){
+    // No recognizable section headers at all — leave ingredients empty, put the rest as steps for manual cleanup
+    steps = consolidate(rawLines.slice(1).map(cleanStep).filter(Boolean), 20);
   }
   return {title, ingredients, steps};
 }
