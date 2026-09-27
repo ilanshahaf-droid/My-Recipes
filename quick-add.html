@@ -350,6 +350,23 @@ async function renderAddScreen(user, row){
   }
   renderListItems(lists[key]);
 
+  let realtimeChannel = null;
+  function subscribeRealtime(){
+    if(realtimeChannel) sbClient.removeChannel(realtimeChannel);
+    realtimeChannel = sbClient
+      .channel('quickadd_row_' + row.id)
+      .on('postgres_changes', { event:'UPDATE', schema:'public', table:'user_data', filter:`id=eq.${row.id}` }, (payload)=>{
+        const newRow = payload.new;
+        if(!newRow) return;
+        row.payload = newRow.payload;
+        const { lists: freshLists, key: freshKey } = pickTargetList(newRow.payload);
+        renderListItems(freshLists[freshKey]);
+        renderFrequentGrid(freshLists[freshKey].items);
+      })
+      .subscribe();
+  }
+  subscribeRealtime();
+
   function renderFrequentGrid(currentItems){
     const grid = document.getElementById('freqGrid');
     const map = new Map();

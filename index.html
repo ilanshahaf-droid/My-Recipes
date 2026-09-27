@@ -2077,6 +2077,27 @@ async function fetchUserDataRows(kind){
   if(error){ console.error(error); return []; }
   return data || [];
 }
+let shoppingRealtimeChannel = null;
+function subscribeShoppingRealtime(rowId){
+  if(shoppingRealtimeChannel){ sbClient.removeChannel(shoppingRealtimeChannel); shoppingRealtimeChannel = null; }
+  if(!rowId || !sbClient) return;
+  shoppingRealtimeChannel = sbClient
+    .channel('shopping_row_' + rowId)
+    .on('postgres_changes', { event:'UPDATE', schema:'public', table:'user_data', filter:`id=eq.${rowId}` }, (payload)=>{
+      const newRow = payload.new;
+      if(!newRow) return;
+      shoppingLists = (newRow.payload && Object.keys(newRow.payload).length) ? newRow.payload : shoppingLists;
+      if(!shoppingLists[activeListId]) activeListId = Object.keys(shoppingLists)[0];
+      localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
+      localStorage.setItem('active_shopping_list', activeListId);
+      shoppingList = new Set(getActiveList().items||[]);
+      boughtItems = new Set(getActiveList().bought||[]);
+      renderShoppingPanel();
+      renderTabBadges();
+      if(shoppingModeActive) renderShoppingModeList();
+    })
+    .subscribe();
+}
 function applyShoppingRow(row){
   activeShoppingRowId = row.id;
   localStorage.setItem('active_shopping_row', row.id);
@@ -2086,6 +2107,7 @@ function applyShoppingRow(row){
   localStorage.setItem('active_shopping_list', activeListId);
   shoppingList = new Set(getActiveList().items||[]);
   boughtItems = new Set(getActiveList().bought||[]);
+  subscribeShoppingRealtime(row.id);
 }
 function applyRecipesRow(row){
   activeRecipesRowId = row.id;
@@ -2165,6 +2187,7 @@ async function shareRow(rowId, email){
 }
 async function doLogout(){
   await sbClient.auth.signOut();
+  subscribeShoppingRealtime(null);
   currentUser = null;
   activeShoppingRowId = null;
   activeRecipesRowId = null;
