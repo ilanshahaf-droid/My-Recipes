@@ -4174,8 +4174,42 @@ function renderCustomRecipesList(){
   });
 }
 
+// Word tables (and some PDFs) get extracted as one run-on line per cell, losing the breaks between
+// ingredients and between numbered steps. Detect that and re-insert the line breaks.
+function looksFlattened(text){
+  const nonEmpty = text.split('\n').filter(l=>l.trim()).length;
+  return text.length > 200 && nonEmpty < 8;
+}
+function deflattenText(text){
+  let t = text;
+  t = t.replace(/\s*(מצרכים|רכיבים|מה שצריך|מה צריך)\s*:?/g, '\n$1\n');
+  t = t.replace(/\s*(אופן ה?הכנה|הוראות ה?הכנה|צעדי ה?הכנה|הוראות)\s*:?/g, '\n$1\n');
+  // numbered steps: "1. text" (Hebrew letter must follow, so decimals like 2.5 are left alone)
+  t = t.replace(/(\d+)\.\s+(?=[\u0590-\u05FF])/g, '\n$1. ');
+  // servings/nutrition footer ("8 מנות, כל מנה 95 קלוריות") should not stay glued to the last step
+  t = t.replace(/([.!])\s+(\d+\s*מנות)/g, '$1\n$2');
+
+  // Within the ingredients block only: start a new line before each digit-led quantity
+  const ingHeaderRe = /(מצרכים|רכיבים|מה שצריך|מה צריך)/;
+  const stepHeaderRe = /(אופן ה?הכנה|הוראות ה?הכנה|צעדי ה?הכנה|הוראות)/;
+  const ingMatch = ingHeaderRe.exec(t);
+  if(ingMatch){
+    const start = ingMatch.index + ingMatch[0].length;
+    const stepMatch = stepHeaderRe.exec(t.slice(start));
+    const end = stepMatch ? start + stepMatch.index : t.length;
+    let seg = t.slice(start, end);
+    seg = seg.replace(/([\u0590-\u05FF])\s+(\d+)/g, '$1\n$2');
+    // common "to taste" seasoning line has no leading quantity, so split it off explicitly
+    seg = seg.replace(/\s+((?:מלח ופלפל|מלח|פלפל שחור|פלפל)\s+לפי הטעם)/g, '\n$1');
+    t = t.slice(0, start) + seg + t.slice(end);
+  }
+  return t;
+}
+
 function parseRecipeText(text, fallbackTitle){
+  if(looksFlattened(text)) text = deflattenText(text);
   const JUNK_PATTERNS = [
+    /^\d+\s*מנות/,
     /^שתפ(ו|י)/, /^שיתוף/, /^הדפיס(ו|י)/, /^הדפסה/, /^שמר(ו|י) מתכון/, /^דרג(ו|י)/, /^דירוג/,
     /^תגוב(ות|ה)/, /^כתב(ו|י) תגובה/, /^עקב(ו|י) אחרינו/, /^הירשמ(ו|י)/, /^לניוזלטר/,
     /^פרסומת/, /^מודעה/, /^קרדיט/, /^צילום[: ]/, /^כל הזכויות שמורות/, /^©/,
@@ -4218,24 +4252,27 @@ function parseRecipeText(text, fallbackTitle){
   ingredients = ingredients.filter(Boolean);
   steps = steps.filter(Boolean);
 
-  // Consolidate obviously fragmented lines (very short lines are usually a mid-sentence
-  // break from PDF column extraction, not a real standalone step) by merging into the previous one.
-  function consolidate(arr, minLen){
+  // Consolidate fragmented lines: only merge a line into the previous one when the previous line
+  // looks unfinished (no terminal punctuation) AND is short, or the new line is a tiny leftover.
+  // Short-but-complete sentences ("מערבבים הכל.") stay separate steps.
+  function consolidate(arr){
     const out = [];
     arr.forEach(line=>{
-      if(out.length && line.length < minLen && !line.startsWith('—')){
-        out[out.length-1] = out[out.length-1] + ' ' + line;
+      const prev = out[out.length-1];
+      const prevUnfinished = prev && !/[.!?:׃]$/.test(prev);
+      if(prev && prevUnfinished && !line.startsWith('—') && (prev.length < 25 || line.length < 10)){
+        out[out.length-1] = prev + ' ' + line;
       } else {
         out.push(line);
       }
     });
     return out;
   }
-  steps = consolidate(steps, 20);
+  steps = consolidate(steps);
 
   if(mode === 'none'){
     // No recognizable section headers at all — leave ingredients empty, put the rest as steps for manual cleanup
-    steps = consolidate(rawLines.slice(1).map(cleanStep).filter(Boolean), 20);
+    steps = consolidate(rawLines.slice(1).map(cleanStep).filter(Boolean));
   }
   return {title, ingredients, steps};
 }
