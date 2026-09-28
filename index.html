@@ -1275,6 +1275,54 @@
     color:var(--ink);
   }
 
+  .settings-topic{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    margin-top:12px;
+    overflow:hidden;
+  }
+  .settings-topic:first-child{margin-top:16px;}
+  .topic-head{
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    background:none;
+    border:none;
+    padding:18px 18px;
+    cursor:pointer;
+    color:var(--ink);
+    text-align:right;
+    font-family:inherit;
+  }
+  .topic-head h2{
+    margin:0;
+    font-family:'Frank Ruhl Libre',serif;
+    font-weight:700;
+    font-size:19px;
+  }
+  .topic-arrow{
+    font-size:16px;
+    color:var(--ink-soft);
+    transition:transform .2s ease;
+    flex-shrink:0;
+  }
+  .settings-topic.open .topic-arrow{transform:rotate(180deg);}
+  .topic-body{
+    display:none;
+    padding:16px 18px 20px;
+    border-top:1px solid var(--line);
+  }
+  .settings-topic.open .topic-body{display:block;}
+  .settings-subtitle{
+    font-weight:700;
+    font-size:14px;
+    margin:0 0 6px;
+    color:var(--ink);
+  }
+
   .settings-hint{
     font-size:13.5px;
     color:var(--ink-soft);
@@ -1556,65 +1604,97 @@
   </div>
 
   <div class="tab-content" id="tab-settings">
-    <section style="margin-top:16px;">
-      <h2>חשבון</h2>
-      <p class="settings-hint">התחברו עם אימייל וסיסמה כדי שהמקרר, רשימות הקניות והמתכונים שלכם יסתנכרנו אוטומטית לכל מכשיר שתתחברו בו — ואפשר לשתף אותם עם מישהו אחר שיש לו חשבון משלו.</p>
-      <div id="accountBox"></div>
-    </section>
-    <section>
-      <h2>ניהול רשימת קניות</h2>
-      <p class="settings-hint">סנכרון, ייבוא, שיתוף וניקוי של הרשימה הפעילה. בוחרים איזו רשימה פעילה בלשונית "קניות".</p>
-      <div id="shoppingManageBox"></div>
-    </section>
-    <section>
-      <h2>ייבוא מתכונים מקובץ</h2>
-      <p class="settings-hint">טוענים קובץ Word (.docx) או PDF שמכיל מתכון אחד. המערכת תנסה לזהות כותרת, מצרכים והוראות הכנה — ותאפשר לכם לתקן לפני השמירה.</p>
-      <input type="file" id="importFileInput" accept=".docx,.pdf" style="display:none;">
-      <button class="import-btn" id="importFileBtn">📄 בחרו קובץ להעלאה</button>
-      <div class="cam-status" id="importStatus"></div>
-      <div id="importForm"></div>
-    </section>
-    <section>
-      <div class="section-head">
-        <h2 style="margin:0;">מתכונים שיובאו</h2>
-        <button class="ranout-toggle" id="toggleImportedRecipesBtn">▾</button>
+
+    <div class="settings-topic">
+      <button type="button" class="topic-head" aria-expanded="false">
+        <h2>חשבון ושיתוף</h2><span class="topic-arrow">▾</span>
+      </button>
+      <div class="topic-body">
+        <p class="settings-hint">התחברו עם אימייל וסיסמה כדי שהמקרר, רשימות הקניות והמתכונים שלכם יסתנכרנו אוטומטית לכל מכשיר שתתחברו בו — ואפשר לשתף אותם עם מישהו אחר שיש לו חשבון משלו.</p>
+        <div id="accountBox"></div>
       </div>
-      <div id="recipeSyncBox"></div>
-      <div id="customRecipesListWrap" style="display:none;">
-        <div id="customRecipesList"></div>
+    </div>
+
+    <div class="settings-topic">
+      <button type="button" class="topic-head" aria-expanded="false">
+        <h2>ניהול רשימת קניות</h2><span class="topic-arrow">▾</span>
+      </button>
+      <div class="topic-body">
+        <p class="settings-hint">סנכרון, ייבוא, שיתוף וניקוי של הרשימה הפעילה. בוחרים איזו רשימה פעילה בלשונית "קניות".</p>
+        <div id="shoppingManageBox"></div>
       </div>
-    </section>
-    <section>
-      <h2>סיווג מצרכים</h2>
-      <p class="settings-hint">קבעו לאיזו קטגוריה ישויך מצרך ברשימת הקניות, ואפשר גם לתת לו אייקון משלכם (למשל "גבינה בולגרית" ← מוצרי חלב 🧀).</p>
-      <div class="add-row">
-        <input type="text" id="catAssignInput" placeholder="שם המצרך...">
-        <select id="catAssignSelect" class="week-select" style="flex:1 1 140px;"></select>
-        <input type="text" id="catAssignIcon" placeholder="אייקון (אימוג׳י)" style="flex:0 1 130px; border:1px solid var(--line); border-radius:10px; padding:8px 10px; font-size:15px; text-align:center; background:var(--surface);">
-        <button id="catAssignBtn">שמרו</button>
+    </div>
+
+    <div class="settings-topic">
+      <button type="button" class="topic-head" aria-expanded="false">
+        <h2>מתכונים</h2><span class="topic-arrow">▾</span>
+      </button>
+      <div class="topic-body">
+        <div class="settings-subtitle">ייבוא מתכון מקובץ</div>
+        <p class="settings-hint">טוענים קובץ Word (.docx) או PDF שמכיל מתכון אחד. המערכת תנסה לזהות כותרת, מצרכים והוראות הכנה — ותאפשר לכם לתקן לפני השמירה.</p>
+        <input type="file" id="importFileInput" accept=".docx,.pdf" style="display:none;">
+        <button class="import-btn" id="importFileBtn">📄 בחרו קובץ להעלאה</button>
+        <div class="cam-status" id="importStatus"></div>
+        <div id="importForm"></div>
+
+        <div class="section-head" style="margin-top:22px;">
+          <span class="settings-subtitle" style="margin:0;">מתכונים שיובאו</span>
+          <button class="ranout-toggle" id="toggleImportedRecipesBtn">▾</button>
+        </div>
+        <div id="recipeSyncBox"></div>
+        <div id="customRecipesListWrap" style="display:none;">
+          <div id="customRecipesList"></div>
+        </div>
       </div>
-      <div class="section-head" style="margin-top:14px;">
-        <span class="settings-hint" style="margin:0; font-weight:700;">מצרכים שהוגדרו</span>
-        <button class="ranout-toggle" id="toggleAddedItemsBtn">▾</button>
+    </div>
+
+    <div class="settings-topic">
+      <button type="button" class="topic-head" aria-expanded="false">
+        <h2>ניהול מלאי</h2><span class="topic-arrow">▾</span>
+      </button>
+      <div class="topic-body">
+        <div class="settings-subtitle">איפוס יומי של המקרר</div>
+        <p class="settings-hint">כשמופעל, קטגוריות שאינן מוגנות יתאפסו אוטומטית פעם ביום (בפעם הראשונה שפותחים את האפליקציה באותו יום).</p>
+        <label class="clearcat-item" style="margin-bottom:12px;">
+          <input type="checkbox" id="autoResetToggle"> הפעילו איפוס יומי אוטומטי
+        </label>
+        <div class="settings-hint" style="margin-bottom:8px; font-weight:700;">קטגוריות מוגנות (לא יתאפסו):</div>
+        <div class="clearcat-grid" id="protectedCatsGrid"></div>
       </div>
-      <div id="catOverridesListWrap" style="display:none;">
-        <div id="catOverridesList"></div>
+    </div>
+
+    <div class="settings-topic">
+      <button type="button" class="topic-head" aria-expanded="false">
+        <h2>סיווג מצרכים ואייקונים</h2><span class="topic-arrow">▾</span>
+      </button>
+      <div class="topic-body">
+        <p class="settings-hint">קבעו לאיזו קטגוריה ישויך מצרך ברשימת הקניות, ואפשר גם לתת לו אייקון משלכם (למשל "גבינה בולגרית" ← מוצרי חלב 🧀).</p>
+        <div class="add-row">
+          <input type="text" id="catAssignInput" placeholder="שם המצרך...">
+          <select id="catAssignSelect" class="week-select" style="flex:1 1 140px;"></select>
+          <input type="text" id="catAssignIcon" placeholder="אייקון (אימוג׳י)" style="flex:0 1 130px; border:1px solid var(--line); border-radius:10px; padding:8px 10px; font-size:15px; text-align:center; background:var(--surface);">
+          <button id="catAssignBtn">שמרו</button>
+        </div>
+        <div class="section-head" style="margin-top:14px;">
+          <span class="settings-hint" style="margin:0; font-weight:700;">מצרכים שהוגדרו</span>
+          <button class="ranout-toggle" id="toggleAddedItemsBtn">▾</button>
+        </div>
+        <div id="catOverridesListWrap" style="display:none;">
+          <div id="catOverridesList"></div>
+        </div>
       </div>
-    </section>
-    <section>
-      <h2>איפוס יומי של המקרר</h2>
-      <p class="settings-hint">כשמופעל, קטגוריות שאינן מוגנות יתאפסו אוטומטית פעם ביום (בפעם הראשונה שפותחים את האפליקציה באותו יום).</p>
-      <label class="clearcat-item" style="margin-bottom:12px;">
-        <input type="checkbox" id="autoResetToggle"> הפעילו איפוס יומי אוטומטי
-      </label>
-      <div class="settings-hint" style="margin-bottom:8px; font-weight:700;">קטגוריות מוגנות (לא יתאפסו):</div>
-      <div class="clearcat-grid" id="protectedCatsGrid"></div>
-    </section>
-    <section>
-      <h2>מה לימדתם את המערכת</h2>
-      <p class="settings-hint">כל פעם שתיקנתם זיהוי מצלמה או ברקוד, המערכת זוכרת את זה לפעם הבאה. אפשר לנקות פריטים שנלמדו בטעות.</p>
-      <div id="learnedList"></div>
-    </section>
+    </div>
+
+    <div class="settings-topic">
+      <button type="button" class="topic-head" aria-expanded="false">
+        <h2>זיהוי מצלמה וברקוד</h2><span class="topic-arrow">▾</span>
+      </button>
+      <div class="topic-body">
+        <p class="settings-hint">כל פעם שתיקנתם זיהוי מצלמה או ברקוד, המערכת זוכרת את זה לפעם הבאה. אפשר לנקות פריטים שנלמדו בטעות.</p>
+        <div id="learnedList"></div>
+      </div>
+    </div>
+
   </div>
 
   <footer class="hint">הנתונים נשמרים במכשיר שלכם בלבד · חלק מהמתכונים בהשראת heli-group.co.il</footer>
@@ -4020,6 +4100,15 @@ document.getElementById('toggleAddedItemsBtn').onclick = ()=>{
 };
 applyCollapsibleState();
 
+// Settings topics: each shows only a title + arrow; tapping opens/closes its settings
+document.querySelectorAll('.topic-head').forEach(btn=>{
+  btn.onclick = ()=>{
+    const topic = btn.closest('.settings-topic');
+    const open = topic.classList.toggle('open');
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+});
+
 document.getElementById('themeBtn').onclick = ()=>{
   isDark = !isDark;
   saveTheme();
@@ -4233,8 +4322,9 @@ function parseRecipeText(text, fallbackTitle){
     .replace(/^[-•*\d.)\s]+/, '')
     .trim();
 
-  let ingredients = [];
-  let steps = [];
+  let rawIng = [];
+  let rawSteps = [];
+  let preHeader = [];
   let mode = 'none'; // 'none' | 'ing' | 'steps'
 
   for(let i=1; i<rawLines.length; i++){
@@ -4243,14 +4333,41 @@ function parseRecipeText(text, fallbackTitle){
     if(STEP_HEADER.test(line)){ mode = 'steps'; continue; }
     if(ING_SUBHEADER.test(line)){
       mode = 'ing';
-      ingredients.push('— ' + line.replace(/:$/,'') + ' —');
+      rawIng.push('— ' + line.replace(/:$/,'') + ' —');
       continue;
     }
-    if(mode === 'ing') ingredients.push(cleanIngredient(line));
-    else if(mode === 'steps') steps.push(cleanStep(line));
+    if(mode === 'ing') rawIng.push(line);
+    else if(mode === 'steps') rawSteps.push(line);
+    else preHeader.push(line);
   }
-  ingredients = ingredients.filter(Boolean);
-  steps = steps.filter(Boolean);
+
+  // --- Repair "run-on" blocks. Word tables (and some PDFs) come out with a whole section on ONE line,
+  // even when the rest of the file has plenty of lines (e.g. website clutter above the recipe).
+  // So we repair each section on its own instead of guessing from the whole file.
+  const splitIngredientBlob = (line)=>{
+    if(line.startsWith('—')) return [line];
+    return line
+      .replace(/([\u0590-\u05FF])\s+(\d+)/g, '$1\n$2')   // new quantity => new ingredient
+      .replace(/\s+((?:מלח ופלפל|מלח|פלפל שחור|פלפל)\s+לפי הטעם)/g, '\n$1') // "to taste" line has no quantity
+      .split('\n');
+  };
+  const splitStepBlob = (line)=>{
+    return line
+      .replace(/\s*\d+\s*מנות[^.]*קלוריות\.?\s*$/, '')    // "8 מנות, כל מנה 95 קלוריות" footer isn't a step
+      .split(/\s+(?=\d+\.\s+[\u0590-\u05FF])/);            // "1. ... 2. ... 3. ..." => separate steps
+  };
+  // Only split ingredients when the section is clearly a run-on blob (1-2 very long lines).
+  // Normally formatted lists (one ingredient per line, in any word order) are left exactly as they are.
+  const ingLooksRunOn = rawIng.length <= 2 && rawIng.join(' ').length > 50;
+  let ingredients = (ingLooksRunOn ? rawIng.flatMap(splitIngredientBlob) : rawIng).map(cleanIngredient).filter(Boolean);
+  let steps = rawSteps.flatMap(splitStepBlob).map(cleanStep).filter(Boolean);
+
+  // Prefill prep time from the website's info lines above the recipe ("בערך שעה", "30 דקות")
+  let time = '';
+  for(const l of preHeader){
+    let m = l.match(/בערך\s+(שעה ו?חצי|שעה|שעתיים)/) || l.match(/(\d+)\s*דקות/);
+    if(m){ time = m[0].replace(/^בערך\s+/,''); if(/^\d+\s*דקות/.test(time)) time = time.replace(/\s*דקות/, ' דק׳'); break; }
+  }
 
   // Consolidate fragmented lines: only merge a line into the previous one when the previous line
   // looks unfinished (no terminal punctuation) AND is short, or the new line is a tiny leftover.
@@ -4274,7 +4391,7 @@ function parseRecipeText(text, fallbackTitle){
     // No recognizable section headers at all — leave ingredients empty, put the rest as steps for manual cleanup
     steps = consolidate(rawLines.slice(1).map(cleanStep).filter(Boolean));
   }
-  return {title, ingredients, steps};
+  return {title, ingredients, steps, time};
 }
 
 async function extractTextFromFile(file){
@@ -4311,7 +4428,7 @@ function renderImportForm(parsed){
       <label>הוראות הכנה (שורה לכל שלב)</label>
       <textarea id="impSteps">${parsed.steps.join('\n')}</textarea>
       <label>זמן הכנה (לא חובה)</label>
-      <input type="text" id="impTime" placeholder="לדוגמה: 30 דק׳">
+      <input type="text" id="impTime" placeholder="לדוגמה: 30 דק׳" value="${(parsed.time||'').replace(/"/g,'&quot;')}">
       <div class="import-form-actions">
         <button id="impSaveBtn">שמרו מתכון</button>
         <button class="secondary" id="impCancelBtn">ביטול</button>
