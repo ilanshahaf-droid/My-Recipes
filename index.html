@@ -294,6 +294,33 @@
     box-shadow:0 1px 3px rgba(0,0,0,.1);
   }
 
+  .custom-cat-add-row{
+    display:flex;
+    gap:8px;
+    width:100%;
+    margin-bottom:10px;
+  }
+  .custom-cat-add-row input{
+    flex:1;
+    border:1px solid var(--line);
+    background:var(--paper);
+    border-radius:100px;
+    padding:8px 14px;
+    font-size:13.5px;
+    font-family:'Assistant',sans-serif;
+    color:var(--ink);
+  }
+  .custom-cat-add-row button{
+    border:none;
+    background:var(--herb);
+    color:#fff;
+    border-radius:100px;
+    width:36px;
+    font-size:18px;
+    font-weight:700;
+    cursor:pointer;
+  }
+
   .item-grid{
     display:flex;
     flex-wrap:wrap;
@@ -1409,6 +1436,12 @@
     cursor:pointer;
     font-family:'Assistant',sans-serif;
   }
+  .row-actions{display:flex; gap:6px; flex-shrink:0;}
+  .row-actions .edit-cat-btn,
+  .row-actions .edit-recipe-btn{
+    background:var(--herb-soft);
+    color:var(--herb);
+  }
   .custom-empty{
     font-size:13.5px;
     color:var(--ink-soft);
@@ -1645,6 +1678,10 @@
         <div id="customRecipesListWrap" style="display:none;">
           <div id="customRecipesList"></div>
         </div>
+
+        <div class="settings-subtitle" style="margin-top:20px;">שילוב קבוע בעדכון הבא</div>
+        <p class="settings-hint">המתכונים והמצרכים המותאמים שלכם לא נכנסים אוטומטית לקוד הקבוע של האפליקציה — אבל אפשר לייצא אותם, ולשלוח לי את הטקסט בשיחה הבאה כדי שאשלב אותם בקביעות בעדכון.</p>
+        <button class="import-btn" id="exportCustomBtn">📤 ייצוא לשילוב קבוע</button>
       </div>
     </div>
 
@@ -1675,6 +1712,14 @@
           <input type="text" id="catAssignIcon" placeholder="אייקון (אימוג׳י)" style="flex:0 1 130px; border:1px solid var(--line); border-radius:10px; padding:8px 10px; font-size:15px; text-align:center; background:var(--surface);">
           <button id="catAssignBtn">שמרו</button>
         </div>
+        <div class="settings-subtitle" style="margin-top:20px;">קטגוריות מותאמות אישית</div>
+        <p class="settings-hint">מוסיפים קטגוריה חדשה משלכם — היא תופיע לצד הקבועות בכל מקום שבוחרים קטגוריה (הקצאת מצרך, רשימת הקניות, איפוס יומי).</p>
+        <div class="add-row">
+          <input type="text" id="newCatInput" placeholder="שם קטגוריה חדשה...">
+          <button id="addCatBtn">הוסיפו קטגוריה</button>
+        </div>
+        <div id="customCatsList" style="margin-top:10px;"></div>
+
         <div class="section-head" style="margin-top:14px;">
           <span class="settings-hint" style="margin:0; font-weight:700;">מצרכים שהוגדרו</span>
           <button class="ranout-toggle" id="toggleAddedItemsBtn">▾</button>
@@ -1816,6 +1861,29 @@ function catOf(item){ return categoryOverrides[item] || ING_TO_CAT[item] || 'א�
 function setCategoryOverride(item, cat){
   if(cat) categoryOverrides[item] = cat; else delete categoryOverrides[item];
   localStorage.setItem('category_overrides', JSON.stringify(categoryOverrides));
+  scheduleAppStatePush();
+}
+
+let customCategories = JSON.parse(localStorage.getItem('custom_categories')||'[]');
+function allCategoryNames(){ return Object.keys(CATALOG).concat(customCategories); }
+function addCustomCategory(name){
+  name = norm(name);
+  if(!name || allCategoryNames().includes(name) || name === 'אחר') return false;
+  customCategories.push(name);
+  localStorage.setItem('custom_categories', JSON.stringify(customCategories));
+  scheduleAppStatePush();
+  return true;
+}
+function deleteCustomCategory(name){
+  customCategories = customCategories.filter(c=>c!==name);
+  localStorage.setItem('custom_categories', JSON.stringify(customCategories));
+  // items that were classified under the deleted category fall back to their default category
+  Object.keys(categoryOverrides).forEach(item=>{
+    if(categoryOverrides[item] === name) delete categoryOverrides[item];
+  });
+  localStorage.setItem('category_overrides', JSON.stringify(categoryOverrides));
+  protectedCategories = protectedCategories.filter(c=>c!==name);
+  localStorage.setItem('protected_categories', JSON.stringify(protectedCategories));
   scheduleAppStatePush();
 }
 let iconOverrides = JSON.parse(localStorage.getItem('icon_overrides')||'{}');
@@ -2162,6 +2230,7 @@ function collectAppState(){
     weeklyPlan,
     itemUsage,
     categoryOverrides,
+    customCategories,
     iconOverrides,
     learnedLabels,
     learnedBarcodes,
@@ -2181,6 +2250,7 @@ function applyAppStateRow(row){
   weeklyPlan = p.weeklyPlan || {};
   itemUsage = p.itemUsage || {};
   categoryOverrides = p.categoryOverrides || {};
+  customCategories = p.customCategories || [];
   iconOverrides = p.iconOverrides || {};
   learnedLabels = p.learnedLabels || {};
   learnedBarcodes = p.learnedBarcodes || {};
@@ -2194,6 +2264,7 @@ function applyAppStateRow(row){
   localStorage.setItem('weekly_plan', JSON.stringify(weeklyPlan));
   localStorage.setItem('item_usage', JSON.stringify(itemUsage));
   localStorage.setItem('category_overrides', JSON.stringify(categoryOverrides));
+  localStorage.setItem('custom_categories', JSON.stringify(customCategories));
   localStorage.setItem('icon_overrides', JSON.stringify(iconOverrides));
   localStorage.setItem('learned_labels', JSON.stringify(learnedLabels));
   localStorage.setItem('learned_barcodes', JSON.stringify(learnedBarcodes));
@@ -2991,7 +3062,7 @@ let clearByCatOpen = false;
 
 function renderFridgeStrip(){
   const wrap = document.getElementById('fridgeSummaryWrap');
-  const catCheckboxes = Object.keys(CATALOG).concat(['אחר']).map(cat=>`
+  const catCheckboxes = allCategoryNames().concat(['אחר']).map(cat=>`
     <label class="clearcat-item"><input type="checkbox" value="${cat}"> ${cat}</label>
   `).join('');
   const clearCatPanel = `
@@ -3094,10 +3165,16 @@ function renderFridgeStrip(){
 
 let activeCat = Object.keys(CATALOG)[0];
 
+function getCategoryItems(cat){
+  if(CATALOG[cat]) return CATALOG[cat];
+  // custom category: whatever items have been explicitly assigned to it
+  return Object.keys(categoryOverrides).filter(item=>categoryOverrides[item]===cat).sort((a,b)=>a.localeCompare(b,'he'));
+}
+
 function renderCatTabs(){
   const el = document.getElementById('catTabs');
   el.innerHTML='';
-  Object.keys(CATALOG).forEach(cat=>{
+  Object.keys(CATALOG).concat(customCategories).forEach(cat=>{
     const b = document.createElement('button');
     b.className = 'cat-tab' + (cat===activeCat?' active':'');
     b.textContent = cat;
@@ -3109,7 +3186,38 @@ function renderCatTabs(){
 function renderItemGrid(){
   const el = document.getElementById('itemGrid');
   el.innerHTML='';
-  CATALOG[activeCat].forEach(item=>{
+  const isCustomCat = customCategories.includes(activeCat);
+
+  if(isCustomCat){
+    const addRow = document.createElement('div');
+    addRow.className = 'custom-cat-add-row';
+    addRow.innerHTML = `
+      <input type="text" placeholder="הוסיפו מצרך חדש ל-${activeCat}...">
+      <button>+</button>
+    `;
+    const input = addRow.querySelector('input');
+    const addNew = ()=>{
+      const val = norm(input.value);
+      if(!val) return;
+      setCategoryOverride(val, activeCat);
+      fridge.add(val);
+      saveFridge();
+      input.value = '';
+      renderAll();
+    };
+    addRow.querySelector('button').onclick = addNew;
+    input.addEventListener('keydown', e=>{ if(e.key==='Enter') addNew(); });
+    el.appendChild(addRow);
+  }
+
+  const items = getCategoryItems(activeCat);
+  if(isCustomCat && items.length===0){
+    const empty = document.createElement('p');
+    empty.className = 'custom-empty';
+    empty.textContent = 'עדיין אין מצרכים בקטגוריה הזו — הוסיפו אחד למעלה';
+    el.appendChild(empty);
+  }
+  items.forEach(item=>{
     const b = document.createElement('button');
     b.className = 'item-btn' + (fridge.has(item)?' selected':'');
     b.textContent = item;
@@ -3574,7 +3682,7 @@ function renderShoppingPanel(){
     if(!groups[cat]) groups[cat] = [];
     groups[cat].push(item);
   });
-  const catOrder = Object.keys(CATALOG).concat(['אחר']);
+  const catOrder = allCategoryNames().concat(['אחר']);
 
   catOrder.forEach(cat=>{
     if(!groups[cat] || groups[cat].length===0) return;
@@ -3635,7 +3743,7 @@ function renderShoppingPanel(){
 function renderShopManageBox(){
   const el = document.getElementById('shoppingManageBox');
   if(!el) return;
-  const catOrder = Object.keys(CATALOG).concat(['אחר']);
+  const catOrder = allCategoryNames().concat(['אחר']);
   el.innerHTML = `
     <div class="settings-hint" style="margin-bottom:12px;">הפעולות כאן חלות על הרשימה הפעילה: <b>${getActiveList().name}</b></div>
     ${renderSyncBoxHTML()}
@@ -3790,7 +3898,7 @@ function renderShoppingModeList(){
     el.innerHTML = '<div class="sm-empty">הרשימה ריקה</div>';
     return;
   }
-  const catOrder = Object.keys(CATALOG).concat(['אחר']);
+  const catOrder = allCategoryNames().concat(['אחר']);
   const groups = {};
   items.forEach(item=>{
     const cat = catOf(item);
@@ -4172,7 +4280,7 @@ function renderAutoResetSettings(){
   const grid = document.getElementById('protectedCatsGrid');
   if(!toggle || !grid) return;
   toggle.checked = autoResetEnabled;
-  const cats = Object.keys(CATALOG).concat(['אחר']);
+  const cats = allCategoryNames().concat(['אחר']);
   grid.innerHTML = cats.map(c=>`
     <label class="clearcat-item"><input type="checkbox" value="${c}" ${protectedCategories.includes(c)?'checked':''}> ${c}</label>
   `).join('');
@@ -4193,7 +4301,7 @@ function renderAutoResetSettings(){
 function renderCatOverridesUI(){
   const select = document.getElementById('catAssignSelect');
   if(!select) return;
-  const cats = Object.keys(CATALOG).concat(['אחר']);
+  const cats = allCategoryNames().concat(['אחר']);
   select.innerHTML = cats.map(c=>`<option value="${c}">${c}</option>`).join('');
 
   const listEl = document.getElementById('catOverridesList');
@@ -4204,9 +4312,22 @@ function renderCatOverridesUI(){
     listEl.innerHTML = items.map(item=>`
       <div class="custom-recipe-row">
         <span>${iconOf(item)} ${item} ← ${catOf(item)}</span>
-        <button data-item="${item}" class="del-cat-btn">מחקו</button>
+        <span class="row-actions">
+          <button data-item="${item}" class="edit-cat-btn">ערכו</button>
+          <button data-item="${item}" class="del-cat-btn">מחקו</button>
+        </span>
       </div>
     `).join('');
+    listEl.querySelectorAll('.edit-cat-btn').forEach(btn=>{
+      btn.onclick = ()=>{
+        const item = btn.dataset.item;
+        document.getElementById('catAssignInput').value = item;
+        select.value = catOf(item);
+        document.getElementById('catAssignIcon').value = iconOverrides[item] || '';
+        document.getElementById('catAssignInput').scrollIntoView({behavior:'smooth', block:'center'});
+        document.getElementById('catAssignInput').focus();
+      };
+    });
     listEl.querySelectorAll('.del-cat-btn').forEach(btn=>{
       btn.onclick = ()=>{
         setCategoryOverride(btn.dataset.item, null);
@@ -4232,6 +4353,44 @@ function renderCatOverridesUI(){
       renderShoppingPanel();
     };
   }
+
+  const catsListEl = document.getElementById('customCatsList');
+  if(catsListEl){
+    if(customCategories.length===0){
+      catsListEl.innerHTML = '<p class="custom-empty">עדיין לא הוספתם קטגוריות משלכם</p>';
+    } else {
+      catsListEl.innerHTML = customCategories.map(c=>`
+        <div class="custom-recipe-row">
+          <span>${c}</span>
+          <button data-cat="${c}" class="del-newcat-btn">מחקו</button>
+        </div>
+      `).join('');
+      catsListEl.querySelectorAll('.del-newcat-btn').forEach(btn=>{
+        btn.onclick = ()=>{
+          showConfirmModal(`למחוק את הקטגוריה "${btn.dataset.cat}"? מצרכים ששויכו אליה יחזרו לסיווג הרגיל שלהם.`, ()=>{
+            deleteCustomCategory(btn.dataset.cat);
+            renderCatOverridesUI();
+            renderShoppingPanel();
+            renderAutoResetSettings();
+          });
+        };
+      });
+    }
+  }
+  const addCatBtn = document.getElementById('addCatBtn');
+  if(addCatBtn){
+    addCatBtn.onclick = ()=>{
+      const input = document.getElementById('newCatInput');
+      const name = norm(input.value);
+      if(!name) return;
+      if(!addCustomCategory(name)){
+        alert('קטגוריה בשם הזה כבר קיימת');
+        return;
+      }
+      input.value = '';
+      renderCatOverridesUI();
+    };
+  }
 }
 
 function renderCustomRecipesList(){
@@ -4244,9 +4403,15 @@ function renderCustomRecipesList(){
   el.innerHTML = customRecipes.map(r=>`
     <div class="custom-recipe-row">
       <span>${r.name}</span>
-      <button data-name="${r.name}" class="del-custom-btn">מחקו</button>
+      <span class="row-actions">
+        <button data-name="${r.name}" class="edit-recipe-btn">ערכו</button>
+        <button data-name="${r.name}" class="del-custom-btn">מחקו</button>
+      </span>
     </div>
   `).join('');
+  el.querySelectorAll('.edit-recipe-btn').forEach(btn=>{
+    btn.onclick = ()=> editCustomRecipe(btn.dataset.name);
+  });
   el.querySelectorAll('.del-custom-btn').forEach(btn=>{
     btn.onclick = ()=>{
       const name = btn.dataset.name;
@@ -4417,7 +4582,7 @@ async function extractTextFromFile(file){
   throw new Error('unsupported-format');
 }
 
-function renderImportForm(parsed){
+function renderImportForm(parsed, editingName){
   const el = document.getElementById('importForm');
   el.innerHTML = `
     <div class="import-form-box">
@@ -4430,7 +4595,7 @@ function renderImportForm(parsed){
       <label>זמן הכנה (לא חובה)</label>
       <input type="text" id="impTime" placeholder="לדוגמה: 30 דק׳" value="${(parsed.time||'').replace(/"/g,'&quot;')}">
       <div class="import-form-actions">
-        <button id="impSaveBtn">שמרו מתכון</button>
+        <button id="impSaveBtn">${editingName ? 'שמרו שינויים' : 'שמרו מתכון'}</button>
         <button class="secondary" id="impCancelBtn">ביטול</button>
       </div>
     </div>
@@ -4444,10 +4609,20 @@ function renderImportForm(parsed){
       alert('נא למלא לפחות שם מתכון ושלב הכנה אחד');
       return;
     }
-    const recipe = {name, time, ingredients, steps, difficulty:'', cuisine:'מיובא'};
-    customRecipes.push(recipe);
-    localStorage.setItem('custom_recipes', JSON.stringify(customRecipes));
-    RECIPES.push(recipe);
+    if(editingName){
+      const oldIdx = customRecipes.findIndex(r=>r.name===editingName);
+      const oldRecipe = oldIdx>-1 ? customRecipes[oldIdx] : {};
+      const updated = {...oldRecipe, name, time, ingredients, steps, difficulty: oldRecipe.difficulty||'', cuisine: oldRecipe.cuisine||'מיובא'};
+      if(oldIdx>-1) customRecipes[oldIdx] = updated; else customRecipes.push(updated);
+      localStorage.setItem('custom_recipes', JSON.stringify(customRecipes));
+      const rIdx = RECIPES.findIndex(r=>r.name===editingName);
+      if(rIdx>-1) RECIPES[rIdx] = updated; else RECIPES.push(updated);
+    } else {
+      const recipe = {name, time, ingredients, steps, difficulty:'', cuisine:'מיובא'};
+      customRecipes.push(recipe);
+      localStorage.setItem('custom_recipes', JSON.stringify(customRecipes));
+      RECIPES.push(recipe);
+    }
     pushRecipeSync();
     pushRecipesRow();
     el.innerHTML = '';
@@ -4457,6 +4632,31 @@ function renderImportForm(parsed){
   };
   document.getElementById('impCancelBtn').onclick = ()=>{ el.innerHTML = ''; };
 }
+function editCustomRecipe(name){
+  const r = customRecipes.find(x=>x.name===name);
+  if(!r) return;
+  renderImportForm({title:r.name, ingredients:r.ingredients||[], steps:r.steps||[], time:r.time||''}, name);
+  document.getElementById('importForm').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function exportCustomContent(){
+  const data = {
+    customRecipes,
+    customCategories,
+    categoryOverrides,
+    iconOverrides
+  };
+  const text = JSON.stringify(data, null, 2);
+  const done = ()=> alert('הועתק ללוח! הדביקו את זה בהודעה אליי בשיחה הבאה כדי שאשלב את זה בקביעות בקוד של האפליקציה.');
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(text).then(done).catch(()=>{
+      showTextareaModal('העתיקו את הטקסט הזה ושלחו לי אותו בשיחה הבאה:', ()=>{}, text);
+    });
+  } else {
+    showTextareaModal('העתיקו את הטקסט הזה ושלחו לי אותו בשיחה הבאה:', ()=>{}, text);
+  }
+}
+document.getElementById('exportCustomBtn').onclick = exportCustomContent;
 
 document.getElementById('importFileBtn').onclick = ()=> document.getElementById('importFileInput').click();
 document.getElementById('importFileInput').addEventListener('change', async (e)=>{
