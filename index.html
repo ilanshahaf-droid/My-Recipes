@@ -294,13 +294,13 @@
     box-shadow:0 1px 3px rgba(0,0,0,.1);
   }
 
-  .custom-cat-add-row{
+  .cat-add-row{
     display:flex;
     gap:8px;
     width:100%;
     margin-bottom:10px;
   }
-  .custom-cat-add-row input{
+  .cat-add-row input{
     flex:1;
     border:1px solid var(--line);
     background:var(--paper);
@@ -310,7 +310,7 @@
     font-family:'Assistant',sans-serif;
     color:var(--ink);
   }
-  .custom-cat-add-row button{
+  .cat-add-row button{
     border:none;
     background:var(--herb);
     color:#fff;
@@ -330,6 +330,12 @@
     border-radius:14px;
     padding:14px;
   }
+  .item-btn-wrap{
+    display:inline-flex;
+    align-items:stretch;
+    border-radius:100px;
+    overflow:hidden;
+  }
   .item-btn{
     border:1px solid var(--line);
     background:var(--paper);
@@ -340,12 +346,25 @@
     cursor:pointer;
     font-family:'Assistant',sans-serif;
   }
+  .item-btn-wrap .item-btn{border-radius:100px 0 0 100px;}
   .item-btn.selected{
     background:var(--herb);
     border-color:var(--herb);
     color:#fff;
     font-weight:600;
   }
+  .item-del{
+    border:1px solid var(--line);
+    border-right:none;
+    background:var(--paper);
+    color:var(--brick);
+    font-size:13px;
+    font-weight:700;
+    padding:0 9px;
+    border-radius:0 100px 100px 0;
+    cursor:pointer;
+  }
+  .item-del:hover{background:var(--brick-soft);}
 
   .empty-state{
     font-family:'Frank Ruhl Libre',serif;
@@ -1438,7 +1457,8 @@
   }
   .row-actions{display:flex; gap:6px; flex-shrink:0;}
   .row-actions .edit-cat-btn,
-  .row-actions .edit-recipe-btn{
+  .row-actions .edit-recipe-btn,
+  .restore-item-btn{
     background:var(--herb-soft);
     color:var(--herb);
   }
@@ -1726,6 +1746,14 @@
         </div>
         <div id="catOverridesListWrap" style="display:none;">
           <div id="catOverridesList"></div>
+        </div>
+
+        <div class="section-head" style="margin-top:14px;">
+          <span class="settings-hint" style="margin:0; font-weight:700;">מצרכים שהוסרו מקטגוריות</span>
+          <button class="ranout-toggle" id="toggleRemovedItemsBtn">▾</button>
+        </div>
+        <div id="removedItemsListWrap" style="display:none;">
+          <div id="removedItemsList"></div>
         </div>
       </div>
     </div>
@@ -2246,6 +2274,7 @@ function collectAppState(){
     itemUsage,
     categoryOverrides,
     customCategories,
+    removedCatalogItems,
     iconOverrides,
     learnedLabels,
     learnedBarcodes,
@@ -2266,6 +2295,7 @@ function applyAppStateRow(row){
   itemUsage = p.itemUsage || {};
   categoryOverrides = p.categoryOverrides || {};
   customCategories = p.customCategories || [];
+  removedCatalogItems = p.removedCatalogItems || [];
   iconOverrides = p.iconOverrides || {};
   learnedLabels = p.learnedLabels || {};
   learnedBarcodes = p.learnedBarcodes || {};
@@ -2280,6 +2310,7 @@ function applyAppStateRow(row){
   localStorage.setItem('item_usage', JSON.stringify(itemUsage));
   localStorage.setItem('category_overrides', JSON.stringify(categoryOverrides));
   localStorage.setItem('custom_categories', JSON.stringify(customCategories));
+  localStorage.setItem('removed_catalog_items', JSON.stringify(removedCatalogItems));
   localStorage.setItem('icon_overrides', JSON.stringify(iconOverrides));
   localStorage.setItem('learned_labels', JSON.stringify(learnedLabels));
   localStorage.setItem('learned_barcodes', JSON.stringify(learnedBarcodes));
@@ -3180,10 +3211,43 @@ function renderFridgeStrip(){
 
 let activeCat = Object.keys(CATALOG)[0];
 
+let removedCatalogItems = JSON.parse(localStorage.getItem('removed_catalog_items')||'[]');
+function removeCatalogItem(item){
+  if(!removedCatalogItems.includes(item)){
+    removedCatalogItems.push(item);
+    localStorage.setItem('removed_catalog_items', JSON.stringify(removedCatalogItems));
+    scheduleAppStatePush();
+  }
+}
+function restoreCatalogItem(item){
+  removedCatalogItems = removedCatalogItems.filter(i=>i!==item);
+  localStorage.setItem('removed_catalog_items', JSON.stringify(removedCatalogItems));
+  scheduleAppStatePush();
+}
+
 function getCategoryItems(cat){
-  if(CATALOG[cat]) return CATALOG[cat];
-  // custom category: whatever items have been explicitly assigned to it
-  return Object.keys(categoryOverrides).filter(item=>categoryOverrides[item]===cat).sort((a,b)=>a.localeCompare(b,'he'));
+  const nativeItems = (CATALOG[cat]||[]).filter(item=>{
+    if(removedCatalogItems.includes(item)) return false;
+    const ov = categoryOverrides[item];
+    if(ov && ov !== cat) return false; // reassigned to a different category
+    return true;
+  });
+  const addedItems = Object.keys(categoryOverrides).filter(item=>
+    categoryOverrides[item] === cat && !(CATALOG[cat]||[]).includes(item)
+  );
+  return [...new Set([...nativeItems, ...addedItems])].sort((a,b)=>a.localeCompare(b,'he'));
+}
+
+// Removing an item from a category means: if it's only here via an override, clear the override;
+// if it's a native catalog member with no override, hide it (reversible from Settings).
+function removeItemFromCategory(item, cat){
+  const ov = categoryOverrides[item];
+  if(ov === cat){
+    setCategoryOverride(item, null);
+  } else if((CATALOG[cat]||[]).includes(item)){
+    removeCatalogItem(item);
+  }
+  renderAll();
 }
 
 function renderCatTabs(){
@@ -3201,38 +3265,38 @@ function renderCatTabs(){
 function renderItemGrid(){
   const el = document.getElementById('itemGrid');
   el.innerHTML='';
-  const isCustomCat = customCategories.includes(activeCat);
 
-  if(isCustomCat){
-    const addRow = document.createElement('div');
-    addRow.className = 'custom-cat-add-row';
-    addRow.innerHTML = `
-      <input type="text" placeholder="הוסיפו מצרך חדש ל-${activeCat}...">
-      <button>+</button>
-    `;
-    const input = addRow.querySelector('input');
-    const addNew = ()=>{
-      const val = norm(input.value);
-      if(!val) return;
-      setCategoryOverride(val, activeCat);
-      fridge.add(val);
-      saveFridge();
-      input.value = '';
-      renderAll();
-    };
-    addRow.querySelector('button').onclick = addNew;
-    input.addEventListener('keydown', e=>{ if(e.key==='Enter') addNew(); });
-    el.appendChild(addRow);
-  }
+  const addRow = document.createElement('div');
+  addRow.className = 'cat-add-row';
+  addRow.innerHTML = `
+    <input type="text" placeholder="הוסיפו מצרך חדש ל-${activeCat}...">
+    <button>+</button>
+  `;
+  const input = addRow.querySelector('input');
+  const addNew = ()=>{
+    const val = norm(input.value);
+    if(!val) return;
+    setCategoryOverride(val, activeCat);
+    fridge.add(val);
+    saveFridge();
+    input.value = '';
+    renderAll();
+  };
+  addRow.querySelector('button').onclick = addNew;
+  input.addEventListener('keydown', e=>{ if(e.key==='Enter') addNew(); });
+  el.appendChild(addRow);
 
   const items = getCategoryItems(activeCat);
-  if(isCustomCat && items.length===0){
+  if(items.length===0){
     const empty = document.createElement('p');
     empty.className = 'custom-empty';
     empty.textContent = 'עדיין אין מצרכים בקטגוריה הזו — הוסיפו אחד למעלה';
     el.appendChild(empty);
   }
   items.forEach(item=>{
+    const wrap = document.createElement('span');
+    wrap.className = 'item-btn-wrap';
+
     const b = document.createElement('button');
     b.className = 'item-btn' + (fridge.has(item)?' selected':'');
     b.textContent = item;
@@ -3251,7 +3315,19 @@ function renderItemGrid(){
       }
       renderAll();
     };
-    el.appendChild(b);
+    wrap.appendChild(b);
+
+    const del = document.createElement('button');
+    del.className = 'item-del';
+    del.setAttribute('aria-label', 'הסרה מהקטגוריה');
+    del.textContent = '×';
+    del.onclick = (e)=>{
+      e.stopPropagation();
+      removeItemFromCategory(item, activeCat);
+    };
+    wrap.appendChild(del);
+
+    el.appendChild(wrap);
   });
 }
 
@@ -4134,6 +4210,7 @@ function renderAll(){
   renderRecipeSyncSection();
   renderCustomRecipesList();
   renderCatOverridesUI();
+  renderRemovedItemsList();
   renderAutoResetSettings();
   renderLearnedList();
   if(shoppingModeActive) renderShoppingModeList();
@@ -4201,6 +4278,7 @@ document.getElementById('weekToggleBtn').onclick = ()=>{
 
 let importedRecipesOpen = localStorage.getItem('imported_recipes_open') === '1';
 let addedItemsOpen = localStorage.getItem('added_items_open') === '1';
+let removedItemsOpen = localStorage.getItem('removed_items_open') === '1';
 function applyCollapsibleState(){
   const rWrap = document.getElementById('customRecipesListWrap');
   const rBtn = document.getElementById('toggleImportedRecipesBtn');
@@ -4210,6 +4288,10 @@ function applyCollapsibleState(){
   const iBtn = document.getElementById('toggleAddedItemsBtn');
   if(iWrap){ iWrap.style.display = addedItemsOpen ? 'block' : 'none'; }
   if(iBtn){ iBtn.textContent = addedItemsOpen ? '▴' : '▾'; }
+  const remWrap = document.getElementById('removedItemsListWrap');
+  const remBtn = document.getElementById('toggleRemovedItemsBtn');
+  if(remWrap){ remWrap.style.display = removedItemsOpen ? 'block' : 'none'; }
+  if(remBtn){ remBtn.textContent = removedItemsOpen ? '▴' : '▾'; }
 }
 document.getElementById('toggleImportedRecipesBtn').onclick = ()=>{
   importedRecipesOpen = !importedRecipesOpen;
@@ -4219,6 +4301,11 @@ document.getElementById('toggleImportedRecipesBtn').onclick = ()=>{
 document.getElementById('toggleAddedItemsBtn').onclick = ()=>{
   addedItemsOpen = !addedItemsOpen;
   localStorage.setItem('added_items_open', addedItemsOpen ? '1' : '0');
+  applyCollapsibleState();
+};
+document.getElementById('toggleRemovedItemsBtn').onclick = ()=>{
+  removedItemsOpen = !removedItemsOpen;
+  localStorage.setItem('removed_items_open', removedItemsOpen ? '1' : '0');
   applyCollapsibleState();
 };
 applyCollapsibleState();
@@ -4309,6 +4396,28 @@ function renderAutoResetSettings(){
       protectedCategories = [...grid.querySelectorAll('input:checked')].map(c=>c.value);
       localStorage.setItem('protected_categories', JSON.stringify(protectedCategories));
       scheduleAppStatePush();
+    };
+  });
+}
+
+function renderRemovedItemsList(){
+  const el = document.getElementById('removedItemsList');
+  if(!el) return;
+  if(removedCatalogItems.length===0){
+    el.innerHTML = '<p class="custom-empty">לא הסרתם מצרכים קבועים מאף קטגוריה</p>';
+    return;
+  }
+  el.innerHTML = removedCatalogItems.map(item=>`
+    <div class="custom-recipe-row">
+      <span>${item} (${ING_TO_CAT[item]||'אחר'})</span>
+      <button data-item="${item}" class="restore-item-btn">שחזרו</button>
+    </div>
+  `).join('');
+  el.querySelectorAll('.restore-item-btn').forEach(btn=>{
+    btn.onclick = ()=>{
+      restoreCatalogItem(btn.dataset.item);
+      renderRemovedItemsList();
+      renderItemGrid();
     };
   });
 }
