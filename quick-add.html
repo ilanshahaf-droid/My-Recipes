@@ -15,7 +15,7 @@
 <style>
   :root{
     --paper:#F6F3EA; --ink:#2B2A26; --ink-soft:#6B675E; --line:#E4DFD0;
-    --surface:#FFFFFF; --herb:#5B7553; --herb-soft:#E3EADD; --brick:#C1442E;
+    --surface:#FFFFFF; --herb:#5B7553; --herb-soft:#E3EADD; --brick:#C1442E; --mustard:#B8842A; --mustard-soft:#F3E6CA;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;width:100%;overflow-x:hidden;}
@@ -101,6 +101,12 @@
     cursor:pointer;
     font-family:'Assistant',sans-serif;
   }
+  .ac-chip.ac-already{
+    background:var(--mustard-soft);
+    color:var(--mustard);
+    border-color:transparent;
+    font-weight:700;
+  }
   .freq-section{margin-top:26px; text-align:right;}
   .freq-title{font-size:12.5px; font-weight:700; color:var(--ink-soft); margin-bottom:8px;}
   .freq-grid{display:flex; flex-wrap:wrap; gap:8px;}
@@ -157,6 +163,35 @@
   .list-row.bought .list-check{background:var(--herb); border-color:var(--herb);}
   .list-row.bought .list-item-name{text-decoration:line-through; opacity:.5;}
   .list-item-name{flex:1; font-size:15px; cursor:pointer;}
+  .list-item-qty{font-size:12.5px; font-weight:400; color:var(--ink-soft);}
+  .list-qty-btn{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--ink-soft);
+    font-size:11px;
+    font-weight:600;
+    padding:3px 8px;
+    border-radius:100px;
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  .qty-inline-input{
+    flex:1;
+    border:1px solid var(--herb);
+    border-radius:8px;
+    padding:6px 10px;
+    font-size:14px;
+    font-family:'Assistant',sans-serif;
+  }
+  .list-qty-save{
+    background:var(--herb);
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    padding:6px 12px;
+    font-size:14px;
+    cursor:pointer;
+  }
   .list-del{
     background:none;
     border:none;
@@ -286,6 +321,7 @@ function renderLogin(prefillStatus){
 function pickTargetList(payload){
   const lists = (payload && Object.keys(payload).length) ? payload : { main: { name:'רשימה ראשית', items:[], bought:[] } };
   const key = lists.main ? 'main' : Object.keys(lists)[0];
+  if(!lists[key].quantities) lists[key].quantities = {};
   return { lists, key };
 }
 
@@ -296,6 +332,7 @@ async function renderAddScreen(user, row){
     <div class="list-name">מוסיפים אל: ${lists[key].name || 'רשימה ראשית'} (${user.email})</div>
     <div class="add-row">
       <input type="text" id="itemInput" placeholder="מה להוסיף?" autofocus>
+      <input type="text" id="itemQtyInput" placeholder="כמות" style="flex:0 1 90px;">
       <button id="addBtn">הוספה</button>
     </div>
     <div class="recent" id="autocompleteRow" style="margin-top:10px;"></div>
@@ -326,6 +363,7 @@ async function renderAddScreen(user, row){
     const el = document.getElementById('listItems');
     const items = listData.items || [];
     const bought = listData.bought || [];
+    const quantities = listData.quantities || {};
     document.getElementById('listCount').textContent = items.length ? `${items.filter(i=>!bought.includes(i)).length}/${items.length}` : '';
     if(items.length === 0){
       el.innerHTML = '<div class="list-empty">הרשימה ריקה</div>';
@@ -334,10 +372,12 @@ async function renderAddScreen(user, row){
     const sorted = [...items].sort((a,b)=> (bought.includes(a)?1:0) - (bought.includes(b)?1:0));
     el.innerHTML = sorted.map(name=>{
       const isBought = bought.includes(name);
+      const qty = quantities[name];
       return `
         <div class="list-row${isBought?' bought':''}" data-name="${name}">
           <button type="button" class="list-check" data-action="toggle" data-name="${name}">${isBought?'✓':''}</button>
-          <span class="list-item-name" data-action="toggle" data-name="${name}">${name}</span>
+          <span class="list-item-name" data-action="toggle" data-name="${name}">${name}${qty?` <span class="list-item-qty">(${qty})</span>`:''}</span>
+          <button type="button" class="list-qty-btn" data-action="qty" data-name="${name}">${qty?'✎':'+כמות'}</button>
           <button type="button" class="list-del" data-action="del" data-name="${name}">×</button>
         </div>`;
     }).join('');
@@ -346,6 +386,23 @@ async function renderAddScreen(user, row){
     });
     el.querySelectorAll('[data-action="del"]').forEach(elm=>{
       elm.onclick = ()=> deleteItem(elm.dataset.name);
+    });
+    el.querySelectorAll('[data-action="qty"]').forEach(btn=>{
+      btn.onclick = ()=>{
+        const name = btn.dataset.name;
+        const row = btn.closest('.list-row');
+        const current = quantities[name] || '';
+        row.innerHTML = `
+          <span class="list-item-name" style="flex:none; font-weight:600;">${name}</span>
+          <input type="text" class="qty-inline-input" value="${current.replace(/"/g,'&quot;')}" placeholder="כמות">
+          <button type="button" class="list-qty-save">✓</button>
+        `;
+        const inp = row.querySelector('.qty-inline-input');
+        inp.focus();
+        const save = ()=> setQuantity(name, norm(inp.value));
+        row.querySelector('.list-qty-save').onclick = save;
+        inp.addEventListener('keydown', e=>{ if(e.key==='Enter') save(); });
+      };
     });
   }
   renderListItems(lists[key]);
@@ -386,8 +443,15 @@ async function renderAddScreen(user, row){
 
   function renderAutocomplete(){
     const ac = document.getElementById('autocompleteRow');
-    const sugg = getSuggestions(input.value);
-    ac.innerHTML = sugg.map(name=>`<button type="button" class="ac-chip" data-name="${name}">${name}</button>`).join('');
+    const q = norm(input.value);
+    if(!q){ ac.innerHTML=''; return; }
+    const { lists: curLists, key: curKey } = pickTargetList(row.payload);
+    const currentItems = curLists[curKey].items || [];
+    const already = currentItems.filter(n=>n.startsWith(q)).sort((a,b)=>a.localeCompare(b,'he'));
+    const alreadySet = new Set(already);
+    const rest = getSuggestions(q).filter(n=>!alreadySet.has(n));
+    const sugg = [...already.map(n=>({name:n, already:true})), ...rest.map(n=>({name:n, already:false}))].slice(0,8);
+    ac.innerHTML = sugg.map(s=>`<button type="button" class="ac-chip${s.already?' ac-already':''}" data-name="${s.name}">${s.already?'✓ ':''}${s.name}</button>`).join('');
     ac.querySelectorAll('.ac-chip').forEach(chip=>{
       chip.onclick = ()=>{
         input.value = chip.dataset.name;
@@ -408,6 +472,7 @@ async function renderAddScreen(user, row){
       const { lists: freshLists, key: freshKey } = pickTargetList(fresh.payload);
       if(!freshLists[freshKey].items) freshLists[freshKey].items = [];
       if(!freshLists[freshKey].bought) freshLists[freshKey].bought = [];
+      if(!freshLists[freshKey].quantities) freshLists[freshKey].quantities = {};
       mutator(freshLists, freshKey);
       const { error: updateErr } = await sbClient.from('user_data').update({
         payload: freshLists,
@@ -428,14 +493,18 @@ async function renderAddScreen(user, row){
   async function addItem(rawVal, refocus){
     const val = norm(rawVal);
     if(!val) return;
+    const qtyInput = document.getElementById('itemQtyInput');
+    const qty = qtyInput ? norm(qtyInput.value) : '';
     input.disabled = true;
     const ok = await mutateAndSave((freshLists, freshKey)=>{
       if(!freshLists[freshKey].items.includes(val)) freshLists[freshKey].items.push(val);
       freshLists[freshKey].bought = freshLists[freshKey].bought.filter(i=>i!==val);
+      if(qty) freshLists[freshKey].quantities[val] = qty; else delete freshLists[freshKey].quantities[val];
     }, 'שומרים...');
     if(ok){
       status.textContent = `✓ "${val}" נוסף`;
       input.value = '';
+      if(qtyInput) qtyInput.value = '';
       document.getElementById('autocompleteRow').innerHTML = '';
     }
     input.disabled = false;
@@ -458,6 +527,15 @@ async function renderAddScreen(user, row){
     await mutateAndSave((freshLists, freshKey)=>{
       freshLists[freshKey].items = freshLists[freshKey].items.filter(i=>i!==name);
       freshLists[freshKey].bought = freshLists[freshKey].bought.filter(i=>i!==name);
+      delete freshLists[freshKey].quantities[name];
+    }, '');
+    status.textContent = '';
+  }
+
+  async function setQuantity(name, qty){
+    await mutateAndSave((freshLists, freshKey)=>{
+      if(!freshLists[freshKey].quantities) freshLists[freshKey].quantities = {};
+      if(qty) freshLists[freshKey].quantities[name] = qty; else delete freshLists[freshKey].quantities[name];
     }, '');
     status.textContent = '';
   }

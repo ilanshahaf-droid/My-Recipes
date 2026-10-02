@@ -522,6 +522,10 @@
     font-family:'Assistant',sans-serif;
     color:var(--ink);
   }
+  .shop-toolbar input.shop-qty-input{
+    flex:0 1 110px;
+    min-width:90px;
+  }
   .shop-toolbar button{
     border:none;
     background:var(--brick);
@@ -602,6 +606,11 @@
     font-size:15px;
     font-weight:500;
   }
+  .shop-item-qty{
+    font-size:12.5px;
+    font-weight:400;
+    color:var(--ink-soft);
+  }
   .shop-item-del{
     background:none;
     border:none;
@@ -612,6 +621,18 @@
     opacity:.5;
   }
   .shop-item-del:hover{opacity:1; color:var(--brick);}
+  .shop-item-qty-btn{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--ink-soft);
+    font-size:11.5px;
+    font-weight:600;
+    padding:3px 8px;
+    border-radius:100px;
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  .shop-item-qty-btn:hover{color:var(--herb); border-color:var(--herb);}
   .shop-footer{
     padding:10px 14px;
     display:flex;
@@ -1219,6 +1240,12 @@
     font-size:13px;
     cursor:pointer;
     font-family:'Assistant',sans-serif;
+  }
+  .ac-chip.ac-already{
+    background:var(--mustard-soft);
+    color:var(--mustard);
+    border-color:transparent;
+    font-weight:700;
   }
 
   .section-head{
@@ -2242,7 +2269,19 @@ if(!shoppingLists){
 }
 let activeListId = localStorage.getItem('active_shopping_list') || 'main';
 if(!shoppingLists[activeListId]) activeListId = 'main';
-function getActiveList(){ return shoppingLists[activeListId]; }
+function getActiveList(){
+  const list = shoppingLists[activeListId];
+  if(list && !list.quantities) list.quantities = {};
+  return list;
+}
+function setItemQuantity(item, qty){
+  const list = getActiveList();
+  if(qty) list.quantities[item] = qty; else delete list.quantities[item];
+  localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
+  pushSync();
+  pushShoppingRow();
+}
+function qtyOfShopItem(item){ return (getActiveList().quantities||{})[item] || ''; }
 let shoppingList = new Set(getActiveList().items||[]);
 let boughtItems = new Set(getActiveList().bought||[]);
 let favorites = new Set(JSON.parse(localStorage.getItem('favorites')||'[]'));
@@ -2644,12 +2683,22 @@ function getSuggestions(query){
     .sort((a,b)=> b.freq - a.freq || a.name.localeCompare(b.name,'he'))
     .slice(0,6);
 }
-function renderAutocomplete(containerId, query, onPick){
+// listItems (optional): names already in the list being added to — shown first, alphabetically,
+// marked as "already there" so duplicates are obvious before you add them again.
+function renderAutocomplete(containerId, query, onPick, listItems){
   const el = document.getElementById(containerId);
   if(!el) return;
-  const sugg = getSuggestions(query);
+  const q = norm(query);
+  if(!q){ el.innerHTML=''; return; }
+  const already = (listItems||[])
+    .filter(n=> n.startsWith(q))
+    .sort((a,b)=>a.localeCompare(b,'he'))
+    .map(name=>({name, already:true}));
+  const alreadyNames = new Set(already.map(i=>i.name));
+  const rest = getSuggestions(q).filter(s=>!alreadyNames.has(s.name)).map(s=>({name:s.name, already:false}));
+  const sugg = [...already, ...rest].slice(0,8);
   if(sugg.length===0){ el.innerHTML=''; return; }
-  el.innerHTML = sugg.map(s=>`<button type="button" class="ac-chip" data-name="${s.name}">${s.name}</button>`).join('');
+  el.innerHTML = sugg.map(s=>`<button type="button" class="ac-chip${s.already?' ac-already':''}" data-name="${s.name}">${s.already?'✓ ':''}${s.name}</button>`).join('');
   el.querySelectorAll('.ac-chip').forEach(chip=>{
     chip.onclick = ()=> onPick(chip.dataset.name);
   });
@@ -2699,7 +2748,7 @@ function showConfirmModal(message, onYes){
   document.getElementById('appModalOk').onclick = ()=>{ closeAppModal(); onYes(); };
   document.getElementById('appModalCancel').onclick = closeAppModal;
 }
-function showPromptModal(message, onSubmit, defaultValue){
+function showPromptModal(message, onSubmit, defaultValue, onClear){
   const overlay = document.getElementById('appModalOverlay');
   document.getElementById('appModalMessage').textContent = message;
   document.getElementById('appModalTextarea').style.display = 'none';
@@ -2709,14 +2758,21 @@ function showPromptModal(message, onSubmit, defaultValue){
   input.value = defaultValue || '';
   overlay.classList.add('active');
   setTimeout(()=>input.focus(), 50);
+  const cancelBtn = document.getElementById('appModalCancel');
   const submit = ()=>{
     const val = norm(input.value||'');
     if(!val) return;
     closeAppModal();
+    cancelBtn.textContent = 'ביטול';
     onSubmit(val);
   };
   document.getElementById('appModalOk').onclick = submit;
-  document.getElementById('appModalCancel').onclick = closeAppModal;
+  cancelBtn.textContent = onClear ? 'נקו' : 'ביטול';
+  cancelBtn.onclick = ()=>{
+    closeAppModal();
+    cancelBtn.textContent = 'ביטול';
+    if(onClear) onClear();
+  };
   input.onkeydown = (e)=>{ if(e.key==='Enter') submit(); };
 }
 function showTextareaModal(message, onSubmit, defaultValue){
@@ -3750,6 +3806,7 @@ function renderShoppingPanel(){
   let html = renderListSwitcher() + `
     <div class="shop-toolbar">
       <input type="text" id="shopAddInput" placeholder="הוסיפו פריט לרשימה...">
+      <input type="text" id="shopAddQty" placeholder="כמות (לא חובה)" class="shop-qty-input">
       <button id="shopAddBtn">הוספה</button>
     </div>
     <div class="autocomplete-row" id="shopAutocomplete"></div>
@@ -3781,11 +3838,13 @@ function renderShoppingPanel(){
     groups[cat].sort((a,b)=>a.localeCompare(b,'he')).forEach(item=>{
       const bought = boughtItems.has(item);
       const emoji = iconOf(item);
+      const qty = qtyOfShopItem(item);
       html += `
         <div class="shop-item ${bought?'bought':''}" data-item="${item}">
           <div class="shop-check">${bought?'✓':''}</div>
           <div class="shop-item-icon">${emoji}</div>
-          <div class="shop-item-name">${item}</div>
+          <div class="shop-item-name">${item}${qty?` <span class="shop-item-qty">(${qty})</span>`:''}</div>
+          <button class="shop-item-qty-btn" aria-label="כמות">${qty?'✎':'+כמות'}</button>
           <button class="shop-item-del" aria-label="מחיקה">×</button>
         </div>`;
     });
@@ -3806,7 +3865,7 @@ function renderShoppingPanel(){
   el.querySelectorAll('.shop-item').forEach(row=>{
     const item = row.dataset.item;
     row.onclick = (e)=>{
-      if(e.target.classList.contains('shop-item-del')) return;
+      if(e.target.classList.contains('shop-item-del') || e.target.classList.contains('shop-item-qty-btn')) return;
       if(boughtItems.has(item)) boughtItems.delete(item);
       else boughtItems.add(item);
       saveBought();
@@ -3816,9 +3875,21 @@ function renderShoppingPanel(){
       e.stopPropagation();
       shoppingList.delete(item);
       boughtItems.delete(item);
+      setItemQuantity(item, null);
       saveShoppingList();
       saveBought();
       renderShoppingPanel();
+    };
+    row.querySelector('.shop-item-qty-btn').onclick = (e)=>{
+      e.stopPropagation();
+      const currentQty = qtyOfShopItem(item);
+      showPromptModal(`כמות עבור "${item}":`, (val)=>{
+        setItemQuantity(item, val);
+        renderShoppingPanel();
+      }, currentQty, currentQty ? ()=>{
+        setItemQuantity(item, null);
+        renderShoppingPanel();
+      } : undefined);
     };
   });
 
@@ -3855,9 +3926,10 @@ function renderShopManageBox(){
       const items = [...shoppingList].filter(i=>catOf(i)===cat);
       if(!items.length) return;
       lines.push('', cat + ':');
-      items.sort((a,b)=>a.localeCompare(b,'he')).forEach(i=>
-        lines.push((boughtItems.has(i)?'✓ ':'☐ ')+i)
-      );
+      items.sort((a,b)=>a.localeCompare(b,'he')).forEach(i=>{
+        const q = qtyOfShopItem(i);
+        lines.push((boughtItems.has(i)?'✓ ':'☐ ')+i+(q?` (${q})`:''));
+      });
     });
     const text = lines.join('\n');
     if(navigator.clipboard) navigator.clipboard.writeText(text).then(()=>alert('הרשימה הועתקה')).catch(()=>{});
@@ -3869,7 +3941,10 @@ function renderShopManageBox(){
       const items = [...shoppingList].filter(i=>catOf(i)===cat && !boughtItems.has(i));
       if(!items.length) return;
       lines.push('', '*'+cat+'*');
-      items.forEach(i=>lines.push('• '+i));
+      items.forEach(i=>{
+        const q = qtyOfShopItem(i);
+        lines.push('• '+i+(q?` (${q})`:''));
+      });
     });
     window.open('https://wa.me/?text='+encodeURIComponent(lines.join('\n')), '_blank');
   };
@@ -3898,6 +3973,7 @@ function renderShopManageBox(){
 function wireShopToolbar(){
   const add = ()=>{
     const input = document.getElementById('shopAddInput');
+    const qtyInput = document.getElementById('shopAddQty');
     const val = norm(input.value);
     if(val){
       shoppingList.add(val);
@@ -3905,7 +3981,10 @@ function wireShopToolbar(){
       recordUsage(val);
       saveShoppingList();
       saveBought();
+      const qty = norm(qtyInput ? qtyInput.value : '');
+      if(qty) setItemQuantity(val, qty);
       input.value = '';
+      if(qtyInput) qtyInput.value = '';
       document.getElementById('shopAutocomplete').innerHTML = '';
       renderShoppingPanel();
     }
@@ -3919,9 +3998,11 @@ function wireShopToolbar(){
       renderAutocomplete('shopAutocomplete', e.target.value, (name)=>{
         input.value = name;
         add();
-      });
+      }, [...shoppingList]);
     });
   }
+  const qtyInput = document.getElementById('shopAddQty');
+  if(qtyInput) qtyInput.addEventListener('keydown', e=>{ if(e.key==='Enter') add(); });
 }
 
 function importShoppingList(){
@@ -4003,11 +4084,12 @@ function renderShoppingModeList(){
     html += `<div class="sm-group-title">${cat}</div>`;
     html += sorted.map(name=>{
       const bought = boughtItems.has(name);
+      const q = qtyOfShopItem(name);
       return `
         <div class="sm-row${bought?' bought':''}" data-item="${name}">
           <span class="sm-check">${bought?'✓':''}</span>
           <span class="sm-icon">${iconOf(name)}</span>
-          <span class="sm-name">${name}</span>
+          <span class="sm-name">${name}${q?` <span class="shop-item-qty">(${q})</span>`:''}</span>
         </div>`;
     }).join('');
   });
