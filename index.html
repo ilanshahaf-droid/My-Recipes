@@ -1623,7 +1623,7 @@
     </div>
   </header>
 
-  <div class="tab-content active" id="tab-fridge">
+  <div class="tab-content" id="tab-fridge">
     <section style="margin-top:16px;">
       <div id="fridgeSummaryWrap"></div>
     </section>
@@ -1673,7 +1673,7 @@
     </section>
   </div>
 
-  <div class="tab-content" id="tab-shopping">
+  <div class="tab-content active" id="tab-shopping">
     <section style="margin-top:16px;">
       <div class="section-head">
         <h2 style="margin:0;">רשימת קניות</h2>
@@ -1801,7 +1801,7 @@
 </div>
 
 <nav class="tab-bar">
-  <button class="tab-btn active" id="tabBtnFridge" data-tab="fridge">
+  <button class="tab-btn" id="tabBtnFridge" data-tab="fridge">
     <span class="tab-icon">🧊</span>
     <span>המקרר</span>
   </button>
@@ -1809,7 +1809,7 @@
     <span class="tab-icon">🍽️</span>
     <span>מתכונים</span>
   </button>
-  <button class="tab-btn" id="tabBtnShopping" data-tab="shopping">
+  <button class="tab-btn active" id="tabBtnShopping" data-tab="shopping">
     <span class="tab-icon">🛒</span>
     <span>קניות</span>
   </button>
@@ -4298,7 +4298,7 @@ function renderAll(){
   if(shoppingModeActive) renderShoppingModeList();
 }
 
-let activeTab = localStorage.getItem('active_tab') || 'fridge';
+let activeTab = 'shopping'; // always open on the shopping list, regardless of which tab was last used
 
 function switchTab(name){
   activeTab = name;
