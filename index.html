@@ -2235,9 +2235,26 @@ const RECIPES = [
    steps:["מטגנים את הבצל בשמן בסיר גדול.","מוסיפים את הירקות ובוחשים עד שיטוגנו קלות. מוסיפים את הגריסים והמים ומביאים לרתיחה.","מוסיפים אבקת מרק, מלח ופלפל, ומבשלים על אש נמוכה עד שתפוחי האדמה והגריסים רכים."]}
 ];
 
+// A pristine, never-mutated snapshot of the built-in recipes exactly as hardcoded, keyed by
+// their original name — used to restore a recipe after editing without needing a page reload.
+const PRISTINE_RECIPES_BY_NAME = {};
+RECIPES.forEach(r=>{ PRISTINE_RECIPES_BY_NAME[r.name] = JSON.parse(JSON.stringify(r)); });
+
 // Recipes imported by the user via Settings → Import (persisted separately, merged in)
 let customRecipes = JSON.parse(localStorage.getItem('custom_recipes')||'[]');
 RECIPES.push(...customRecipes);
+
+// Edits to built-in recipes, keyed by the recipe's ORIGINAL (hardcoded) name so edits keep
+// applying correctly across reloads even after a rename — RECIPES itself always starts fresh
+// from the hardcoded list on every load, so overrides are re-applied on top each time.
+let recipeOverrides = JSON.parse(localStorage.getItem('recipe_overrides')||'{}');
+function applyRecipeOverrides(){
+  Object.entries(recipeOverrides).forEach(([originalName, data])=>{
+    const idx = RECIPES.findIndex(r=>r.name===originalName || r.name===data.name);
+    if(idx>-1) RECIPES[idx] = {...RECIPES[idx], ...data};
+  });
+}
+applyRecipeOverrides();
 
 function norm(s){ return s.trim().replace(/\s+/g,' '); }
 
@@ -2331,7 +2348,8 @@ function collectAppState(){
     learnedLabels,
     learnedBarcodes,
     autoResetEnabled,
-    protectedCategories
+    protectedCategories,
+    recipeOverrides
   };
 }
 function applyAppStateRow(row){
@@ -2353,6 +2371,7 @@ function applyAppStateRow(row){
   learnedBarcodes = p.learnedBarcodes || {};
   autoResetEnabled = !!p.autoResetEnabled;
   protectedCategories = p.protectedCategories || ["מזווה","תיבול ואפייה"];
+  recipeOverrides = p.recipeOverrides || {};
   localStorage.setItem('fridge_items', JSON.stringify([...fridge]));
   localStorage.setItem('fridge_expiry', JSON.stringify(fridgeExpiry));
   localStorage.setItem('cooked_recipes', JSON.stringify([...cookedSet]));
@@ -2368,6 +2387,8 @@ function applyAppStateRow(row){
   localStorage.setItem('learned_barcodes', JSON.stringify(learnedBarcodes));
   localStorage.setItem('auto_reset_enabled', autoResetEnabled ? '1' : '0');
   localStorage.setItem('protected_categories', JSON.stringify(protectedCategories));
+  localStorage.setItem('recipe_overrides', JSON.stringify(recipeOverrides));
+  applyRecipeOverrides();
 }
 async function pushAppState(){
   if(!currentUser || !activeStateRowId || !sbClient) return;
@@ -3466,6 +3487,13 @@ function wireCardActions(card, r, missing){
       suggestAlternative(r);
     };
   }
+  const editBtn = card.querySelector('.edit-recipe-card-btn');
+  if(editBtn){
+    editBtn.onclick = (e)=>{
+      e.stopPropagation();
+      editAnyRecipe(r.name);
+    };
+  }
 }
 
 function suggestAlternative(base){
@@ -3516,6 +3544,7 @@ function cardActionsHTML(r, missing){
       <button class="action-btn fav-btn ${isFav?'fav-active':''}">${isFav? '★ במועדפים' : '☆ הוסיפו למועדפים'}</button>
       ${missing.length>0 ? `<button class="action-btn shop-btn">➕ הוסיפו ${missing.length} חסרים לקניות</button>` : ''}
       <button class="action-btn share-btn">📤 שתפו</button>
+      <button class="action-btn edit-recipe-card-btn">✎ ערכו מתכון</button>
     </div>
   `;
 }
@@ -4801,7 +4830,9 @@ async function extractTextFromFile(file){
   throw new Error('unsupported-format');
 }
 
-function renderImportForm(parsed, editingName){
+// editMeta (optional): {type:'builtin', originalName} for editing one of the built-in recipes.
+// Editing a custom/imported recipe is signalled simply by passing its name as editingName with no editMeta.
+function renderImportForm(parsed, editingName, editMeta){
   const el = document.getElementById('importForm');
   el.innerHTML = `
     <div class="import-form-box">
@@ -4816,6 +4847,7 @@ function renderImportForm(parsed, editingName){
       <div class="import-form-actions">
         <button id="impSaveBtn">${editingName ? 'שמרו שינויים' : 'שמרו מתכון'}</button>
         <button class="secondary" id="impCancelBtn">ביטול</button>
+        ${editMeta && editMeta.type==='builtin' ? '<button class="secondary" id="impRestoreBtn">שחזרו למקור</button>' : ''}
       </div>
     </div>
   `;
@@ -4828,7 +4860,15 @@ function renderImportForm(parsed, editingName){
       alert('נא למלא לפחות שם מתכון ושלב הכנה אחד');
       return;
     }
-    if(editingName){
+    if(editMeta && editMeta.type==='builtin'){
+      const idx = RECIPES.findIndex(r=>r.name===editingName);
+      const base = idx>-1 ? RECIPES[idx] : {};
+      const updated = {...base, name, time, ingredients, steps};
+      recipeOverrides[editMeta.originalName] = updated;
+      localStorage.setItem('recipe_overrides', JSON.stringify(recipeOverrides));
+      if(idx>-1) RECIPES[idx] = updated; else RECIPES.push(updated);
+      scheduleAppStatePush();
+    } else if(editingName){
       const oldIdx = customRecipes.findIndex(r=>r.name===editingName);
       const oldRecipe = oldIdx>-1 ? customRecipes[oldIdx] : {};
       const updated = {...oldRecipe, name, time, ingredients, steps, difficulty: oldRecipe.difficulty||'', cuisine: oldRecipe.cuisine||'מיובא'};
@@ -4836,25 +4876,61 @@ function renderImportForm(parsed, editingName){
       localStorage.setItem('custom_recipes', JSON.stringify(customRecipes));
       const rIdx = RECIPES.findIndex(r=>r.name===editingName);
       if(rIdx>-1) RECIPES[rIdx] = updated; else RECIPES.push(updated);
+      pushRecipeSync();
+      pushRecipesRow();
     } else {
       const recipe = {name, time, ingredients, steps, difficulty:'', cuisine:'מיובא'};
       customRecipes.push(recipe);
       localStorage.setItem('custom_recipes', JSON.stringify(customRecipes));
       RECIPES.push(recipe);
+      pushRecipeSync();
+      pushRecipesRow();
     }
-    pushRecipeSync();
-    pushRecipesRow();
     el.innerHTML = '';
     document.getElementById('importStatus').textContent = `✓ "${name}" נשמר בהצלחה`;
     setTimeout(()=>{ document.getElementById('importStatus').textContent=''; }, 4000);
     renderAll();
   };
   document.getElementById('impCancelBtn').onclick = ()=>{ el.innerHTML = ''; };
+  const restoreBtn = document.getElementById('impRestoreBtn');
+  if(restoreBtn){
+    restoreBtn.onclick = ()=>{
+      showConfirmModal('לשחזר את המתכון הזה לגרסה המקורית? כל השינויים שלכם יימחקו.', ()=>{
+        delete recipeOverrides[editMeta.originalName];
+        localStorage.setItem('recipe_overrides', JSON.stringify(recipeOverrides));
+        scheduleAppStatePush();
+        const pristine = PRISTINE_RECIPES_BY_NAME[editMeta.originalName];
+        const idx = RECIPES.findIndex(r=>r.name===editingName);
+        if(pristine && idx>-1) RECIPES[idx] = JSON.parse(JSON.stringify(pristine));
+        el.innerHTML = '';
+        document.getElementById('importStatus').textContent = '✓ המתכון שוחזר למקור';
+        setTimeout(()=>{ document.getElementById('importStatus').textContent=''; }, 4000);
+        renderAll();
+      });
+    };
+  }
 }
 function editCustomRecipe(name){
   const r = customRecipes.find(x=>x.name===name);
   if(!r) return;
   renderImportForm({title:r.name, ingredients:r.ingredients||[], steps:r.steps||[], time:r.time||''}, name);
+  document.getElementById('importForm').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function editAnyRecipe(name){
+  if(customRecipes.find(r=>r.name===name)){
+    editCustomRecipe(name);
+    return;
+  }
+  // built-in recipe (possibly already overridden) — find its ORIGINAL name so re-edits keep
+  // targeting the same override entry instead of creating a new one under the edited name.
+  const overrideEntry = Object.entries(recipeOverrides).find(([orig, data])=> data.name === name);
+  const originalName = overrideEntry ? overrideEntry[0] : name;
+  const r = RECIPES.find(x=>x.name===name);
+  if(!r) return;
+  switchTab('settings');
+  const recipesHead = [...document.querySelectorAll('.topic-head')].find(h=>h.querySelector('h2').textContent.includes('מתכונים'));
+  if(recipesHead && !recipesHead.closest('.settings-topic').classList.contains('open')) recipesHead.click();
+  renderImportForm({title:r.name, ingredients:r.ingredients||[], steps:r.steps||[], time:r.time||''}, name, {type:'builtin', originalName});
   document.getElementById('importForm').scrollIntoView({behavior:'smooth', block:'start'});
 }
 
