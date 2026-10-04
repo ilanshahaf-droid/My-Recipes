@@ -1893,13 +1893,14 @@
 const CATALOG = {
   "ירקות": ["עגבניות","מלפפונים","מלפפון","בצל","שום","גזר","פלפל","תפוחי אדמה","קישואים","חסה","כרוב","פטריות","תרד","בטטה","ברוקולי","אפונה קפואה","חציל","במיה","תירס","כרובית","סלרי","כוסברה","פטרוזיליה","ג'ינג'ר"],
   "חלבונים": ["ביצים","עוף","בשר טחון","טונה","טופו","נקניקיות","מוצרלה","סלמון","שעועית לבנה","חומוס","עדשים","שעועית אדומה"],
-  "מוצרי חלב": ["חלב","יוגורט","חמאה","שמנת מתוקה","שמנת חמוצה","גבינת שמנת","פטה","גבינה צהובה","גבינה לבנה","קוטג'","מעדנים","גבינה בולגרית","שמנת לבישול","מרגרינה"],
-  "פחמימות": ["אורז","אורז אדום","פסטה","לחם","קמח","תפוחי אדמה","קינואה","בורגול","פיתות","נודלס","שיבולת שועל","גריסים","לחמניות"],
-  "מזווה": ["שמן זית","מלח","פלפל שחור","סוכר","רוטב סויה","טחינה","חומץ","דבש","אבקת אפייה","חמאת בוטנים","קארי","כמון","פפריקה","חרדל","מיונז","חלב קוקוס","פסטו","נוטלה","קטשופ","שקדים","שימורים","שום קפוא","שקדי מרק","ספריי שמן","ויטמינצ'יק","קפה ג'ייקובס","רוטב של אילת","רסק עגבניות","אבקת מרק בצל"],
+  "מוצרי חלב": ["חלב","יוגורט","חמאה","שמנת מתוקה","שמנת חמוצה","גבינת שמנת","פטה","גבינה צהובה","גבינה לבנה","קוטג'","מעדנים","גבינה בולגרית","שמנת לבישול","מרגרינה","גבינת פטה"],
+  "פחמימות": ["אורז","אורז אדום","פסטה","לחם","קמח","תפוחי אדמה","קינואה","בורגול","פיתות","נודלס","שיבולת שועל","גריסים","לחמניות","לחמניות צמה"],
+  "מזווה": ["שמן זית","מלח","פלפל שחור","סוכר","רוטב סויה","טחינה","חומץ","דבש","אבקת אפייה","חמאת בוטנים","קארי","כמון","פפריקה","חרדל","מיונז","חלב קוקוס","פסטו","נוטלה","קטשופ","שימורים","שום קפוא","שקדי מרק","ספריי שמן","ויטמינצ'יק","קפה ג'ייקובס","רוטב של אילת","רסק עגבניות","אבקת מרק בצל","חומץ בן יין","בקבוקי מים קטנים","מייפל"],
   "פירות": ["תפוח","בננה","לימון","ענבים","תותים","אבוקדו","תפוז"],
-  "תיבול ואפייה": ["שומשום","תימין","זעתר","קינמון","צנוברים","פירורי לחם","שמרים יבשים","חמוציות מיובשות","אגוזי מלך","משחת קארי"],
-  "קפואים": ["צ'יפס קפוא"],
-  "טואלטיקה": ["מברשת שיניים"]
+  "תיבול ואפייה": ["שומשום","תימין","זעתר","קינמון","צנוברים","פירורי לחם","שמרים יבשים","חמוציות מיובשות","משחת קארי","זרעי צ'יה"],
+  "קפואים": ["צ'יפס קפוא","שניצל קפוא"],
+  "טואלטיקה": ["מברשת שיניים","שקיות זבל"],
+  "חטיפים ופיצוחים": ["שקדים","חטיפים","חמוציות","אגוזי מלך","חטיפי דגנים"]
 };
 
 // ingredient -> category map
@@ -1927,7 +1928,8 @@ const DEFAULT_QTY = {
   "שומשום":"2 כפות","תימין":"כפית עלים","זעתר":"3 כפות","קינמון":"כפית אחת","צנוברים":"2 כפות",
   "פירורי לחם":"חצי כוס","שמרים יבשים":"שקית (7 גרם)","חמוציות מיובשות":"שליש כוס","אגוזי מלך":"חצי כוס",
   "אורז אדום":"חצי כוס","שקדים":"חצי כוס","ג'ינג'ר":"20 גרם","רסק עגבניות":"120 מ\"ל","מרגרינה":"100 גרם",
-  "אבקת מרק בצל":"2 כפות","מלפפון":"1 יחידה","פטרוזיליה":"חופן קצוץ"
+  "אבקת מרק בצל":"2 כפות","מלפפון":"1 יחידה","פטרוזיליה":"חופן קצוץ",
+  "זרעי צ'יה":"4 כפות","מייפל":"2 כפות"
 };
 function qtyOf(item){ return DEFAULT_QTY[item] || ''; }
 let categoryOverrides = JSON.parse(localStorage.getItem('category_overrides')||'{}');
@@ -1996,12 +1998,14 @@ const ING_EMOJI = {
   "ענבים":"🍇","תותים":"🍓","אבוקדו":"🥑","תפוז":"🍊",
   "סלרי":"🥬","כוסברה":"🌿","עדשים":"🟤","שעועית אדומה":"🫘","חלב קוקוס":"🥥",
   "גריסים":"🌾","שומשום":"⚪","תימין":"🌿","זעתר":"🌿","קינמון":"🟫",
-  "צנוברים":"🌰","פירורי לחם":"🍞","שמרים יבשים":"🫙","חמוציות מיובשות":"🔴","אגוזי מלך":"🌰",
+  "צנוברים":"🌰","פירורי לחם":"🍞","שמרים יבשים":"🫙","חמוציות מיובשות":"🔴","אגוזי מלך":"🥜",
   "פסטו":"🍯","נוטלה":"🍫","קטשופ":"🥫","שקדים":"🥜","מלפפון":"🥒","מעדנים":"🍶","לחמניות":"🥖",
   "שימורים":"🥫","שום קפוא":"🧄","שקדי מרק":"🍛","משחת קארי":"🫙","ספריי שמן":"🧂","פטרוזיליה":"🥬",
   "צ'יפס קפוא":"🥔","ויטמינצ'יק":"🧃","שמנת לבישול":"🍶","קפה ג'ייקובס":"☕","רוטב של אילת":"🥫",
   "שעועית ירוקה":"🫛","גבינה בולגרית":"🧀","מברשת שיניים":"🧴",
-  "אורז אדום":"🍚","ג'ינג'ר":"🫚","רסק עגבניות":"🥫","מרגרינה":"🧈","אבקת מרק בצל":"🧂"
+  "אורז אדום":"🍚","ג'ינג'ר":"🫚","רסק עגבניות":"🥫","מרגרינה":"🧈","אבקת מרק בצל":"🧂",
+  "חטיפים":"🍿","חמוציות":"🥜","גבינת פטה":"🧀","שקיות זבל":"🗑️","שניצל קפוא":"🍗","חומץ בן יין":"🍾",
+  "חטיפי דגנים":"🍫","לחמניות צמה":"🥖","בקבוקי מים קטנים":"🥤","זרעי צ'יה":"🌱","מייפל":"🍁"
 };
 
 const SUBSTITUTES = {
@@ -2235,7 +2239,9 @@ const RECIPES = [
   {name:"דאל מקאני (תבשיל עדשים ושעועית אדומה)", time:"שעה", healthy:true, difficulty:"בינוני", cuisine:"הודי", ingredients:["עדשים","שעועית אדומה","ג'ינג'ר","שום","רסק עגבניות","פפריקה","מרגרינה","מלח"],
    steps:["מסננים את העדשים והשעועית ושמים בסיר בינוני. מוסיפים מים וממליחים לפי הטעם. מביאים לידי רתיחה, ומבשלים עד ש-2/3 מהמים התאדו.","בעזרת כף עץ מועכים את העדשים והשעועית כנגד שולי הסיר. מוסיפים את הג'ינג'ר, השום, רסק העגבניות ואבקת הפפריקה האדומה, ואת רוב המרגרינה.","מבשלים מכוסה על אש קטנה כ-45 דקות.","מורידים מהאש, מעבירים לקערת הגשה, ומעטרים במרגרינה הנותרת."]},
   {name:"מרק ירקות עם גריסים", time:"שעה", healthy:true, difficulty:"קל", cuisine:"ביתי", ingredients:["קישואים","גזר","תפוחי אדמה","כרובית","ברוקולי","גריסים","שמן זית","בצל","אבקת מרק בצל","מלח","פלפל שחור"],
-   steps:["מטגנים את הבצל בשמן בסיר גדול.","מוסיפים את הירקות ובוחשים עד שיטוגנו קלות. מוסיפים את הגריסים והמים ומביאים לרתיחה.","מוסיפים אבקת מרק, מלח ופלפל, ומבשלים על אש נמוכה עד שתפוחי האדמה והגריסים רכים."]}
+   steps:["מטגנים את הבצל בשמן בסיר גדול.","מוסיפים את הירקות ובוחשים עד שיטוגנו קלות. מוסיפים את הגריסים והמים ומביאים לרתיחה.","מוסיפים אבקת מרק, מלח ופלפל, ומבשלים על אש נמוכה עד שתפוחי האדמה והגריסים רכים."]},
+  {name:"יוגורט עם זרעי צ'יה ופירות", time:"10 דק׳ (+לילה במקרר)", healthy:true, difficulty:"קל", cuisine:"בריא", ingredients:["יוגורט","חלב","זרעי צ'יה","מייפל"],
+   steps:["מערבבים בצנצנת גדולה את היוגורט, החלב, הצ'יה והמייפל. סוגרים, ומעבירים למקרר לכל הלילה.","מעבירים את הפודינג לקערות, מפזרים מעל פרי טרי חתוך ועוד מייפל, ומגישים."]}
 ];
 
 // A pristine, never-mutated snapshot of the built-in recipes exactly as hardcoded, keyed by
@@ -2312,7 +2318,7 @@ function setItemQuantity(item, qty){
   if(qty) list.quantities[item] = qty; else delete list.quantities[item];
   localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
   pushSync();
-  pushShoppingRow();
+  scheduleShoppingPush();
 }
 function qtyOfShopItem(item){ return (getActiveList().quantities||{})[item] || ''; }
 let shoppingList = new Set(getActiveList().items||[]);
@@ -2434,6 +2440,10 @@ async function fetchUserDataRows(kind){
   return data || [];
 }
 let shoppingRealtimeChannel = null;
+// Tracks the updated_at of the shopping data we last knew to be current (from a push we made or
+// a realtime event we applied) — guards against an older, out-of-order realtime echo reverting
+// a newer local change (e.g. rapid taps firing overlapping update requests out of commit order).
+let lastShoppingUpdatedAt = null;
 function subscribeShoppingRealtime(rowId){
   if(shoppingRealtimeChannel){ sbClient.removeChannel(shoppingRealtimeChannel); shoppingRealtimeChannel = null; }
   if(!rowId || !sbClient) return;
@@ -2442,6 +2452,8 @@ function subscribeShoppingRealtime(rowId){
     .on('postgres_changes', { event:'UPDATE', schema:'public', table:'user_data', filter:`id=eq.${rowId}` }, (payload)=>{
       const newRow = payload.new;
       if(!newRow) return;
+      if(newRow.updated_at && lastShoppingUpdatedAt && newRow.updated_at <= lastShoppingUpdatedAt) return;
+      lastShoppingUpdatedAt = newRow.updated_at || lastShoppingUpdatedAt;
       shoppingLists = (newRow.payload && Object.keys(newRow.payload).length) ? newRow.payload : shoppingLists;
       if(!shoppingLists[activeListId]) activeListId = Object.keys(shoppingLists)[0];
       localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
@@ -2456,6 +2468,7 @@ function subscribeShoppingRealtime(rowId){
 }
 function applyShoppingRow(row){
   activeShoppingRowId = row.id;
+  lastShoppingUpdatedAt = row.updated_at || lastShoppingUpdatedAt;
   localStorage.setItem('active_shopping_row', row.id);
   shoppingLists = (row.payload && Object.keys(row.payload).length) ? row.payload : {main:{name:'רשימה ראשית', items:[], bought:[], syncCode:null}};
   activeListId = Object.keys(shoppingLists)[0];
@@ -2529,9 +2542,17 @@ async function loadAccountData(){
 }
 async function pushShoppingRow(){
   if(!currentUser || !activeShoppingRowId || !sbClient) return;
+  const stamp = new Date().toISOString();
+  lastShoppingUpdatedAt = stamp; // claim this moment now, so an out-of-order older echo can't win
   try{
-    await sbClient.from('user_data').update({payload: shoppingLists, updated_at: new Date().toISOString()}).eq('id', activeShoppingRowId);
+    await sbClient.from('user_data').update({payload: shoppingLists, updated_at: stamp}).eq('id', activeShoppingRowId);
   }catch(e){ /* offline — local copy is already saved */ }
+}
+let shoppingPushTimer = null;
+function scheduleShoppingPush(){
+  if(!currentUser || !activeShoppingRowId) return;
+  clearTimeout(shoppingPushTimer);
+  shoppingPushTimer = setTimeout(pushShoppingRow, 500);
 }
 async function refreshShoppingRowFromAccount(){
   if(!currentUser || !activeShoppingRowId || !sbClient) return;
@@ -2785,13 +2806,13 @@ function saveShoppingList(){
   getActiveList().items = [...shoppingList];
   localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
   pushSync();
-  pushShoppingRow();
+  scheduleShoppingPush();
 }
 function saveBought(){
   getActiveList().bought = [...boughtItems];
   localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
   pushSync();
-  pushShoppingRow();
+  scheduleShoppingPush();
 }
 function switchShoppingList(id){
   if(!shoppingLists[id] || id === activeListId) return;
@@ -2805,7 +2826,7 @@ function switchShoppingList(id){
   shoppingList = new Set(getActiveList().items||[]);
   boughtItems = new Set(getActiveList().bought||[]);
   syncCode = getActiveList().syncCode || null;
-  pushShoppingRow();
+  scheduleShoppingPush();
   renderShoppingPanel();
   renderTabBadges();
 }
@@ -2908,7 +2929,7 @@ function deleteShoppingList(id){
     delete shoppingLists[id];
     localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
     if(activeListId === id) switchShoppingList('main');
-    else { pushShoppingRow(); renderShoppingPanel(); }
+    else { scheduleShoppingPush(); renderShoppingPanel(); }
   });
 }
 function renderListSwitcher(){
