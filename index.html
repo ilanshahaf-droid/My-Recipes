@@ -1766,6 +1766,8 @@
       </button>
       <div class="topic-body">
         <p class="settings-hint">קבעו לאיזו קטגוריה ישויך מצרך ברשימת הקניות, ואפשר גם לתת לו אייקון משלכם (למשל "גבינה בולגרית" ← מוצרי חלב 🧀).</p>
+        <p class="settings-hint">שתפו את הסיווגים שלכם עם מי שאתם חולקים איתם רשימת קניות — כדי שהקטגוריות ייראו אצלו באותו אופן, בלי לשתף את המקרר או שאר הנתונים האישיים שלכם.</p>
+        <div id="categorySettingsSyncBox"></div>
         <div class="add-row">
           <input type="text" id="catAssignInput" placeholder="שם המצרך...">
           <select id="catAssignSelect" class="week-select" style="flex:1 1 140px;"></select>
@@ -1933,7 +1935,7 @@ function catOf(item){ return categoryOverrides[item] || ING_TO_CAT[item] || 'א�
 function setCategoryOverride(item, cat){
   if(cat) categoryOverrides[item] = cat; else delete categoryOverrides[item];
   localStorage.setItem('category_overrides', JSON.stringify(categoryOverrides));
-  scheduleAppStatePush();
+  scheduleCategorySettingsPush();
 }
 
 let customCategories = JSON.parse(localStorage.getItem('custom_categories')||'[]');
@@ -1943,7 +1945,7 @@ function addCustomCategory(name){
   if(!name || allCategoryNames().includes(name) || name === 'אחר') return false;
   customCategories.push(name);
   localStorage.setItem('custom_categories', JSON.stringify(customCategories));
-  scheduleAppStatePush();
+  scheduleCategorySettingsPush();
   return true;
 }
 function deleteCustomCategory(name){
@@ -1956,6 +1958,7 @@ function deleteCustomCategory(name){
   localStorage.setItem('category_overrides', JSON.stringify(categoryOverrides));
   protectedCategories = protectedCategories.filter(c=>c!==name);
   localStorage.setItem('protected_categories', JSON.stringify(protectedCategories));
+  scheduleCategorySettingsPush();
   scheduleAppStatePush();
 }
 let iconOverrides = JSON.parse(localStorage.getItem('icon_overrides')||'{}');
@@ -1963,7 +1966,7 @@ function iconOf(item){ return iconOverrides[item] || ING_EMOJI[item] || '🛒'; 
 function setIconOverride(item, icon){
   if(icon) iconOverrides[item] = icon; else delete iconOverrides[item];
   localStorage.setItem('icon_overrides', JSON.stringify(iconOverrides));
-  scheduleAppStatePush();
+  scheduleCategorySettingsPush();
 }
 
 let autoResetEnabled = localStorage.getItem('auto_reset_enabled') === '1';
@@ -2327,10 +2330,13 @@ let currentUser = null;
 let activeShoppingRowId = localStorage.getItem('active_shopping_row') || null;
 let activeRecipesRowId = localStorage.getItem('active_recipes_row') || null;
 let activeStateRowId = localStorage.getItem('active_state_row') || null;
+let activeCategorySettingsRowId = localStorage.getItem('active_category_settings_row') || null;
 let accountShoppingRows = [];
 let accountRecipeRows = [];
 let accountStateRows = [];
+let accountCategorySettingsRows = [];
 let appStatePushTimer = null;
+let categorySettingsPushTimer = null;
 
 function collectAppState(){
   return {
@@ -2341,10 +2347,6 @@ function collectAppState(){
     favorites: [...favorites],
     weeklyPlan,
     itemUsage,
-    categoryOverrides,
-    customCategories,
-    removedCatalogItems,
-    iconOverrides,
     learnedLabels,
     learnedBarcodes,
     autoResetEnabled,
@@ -2363,10 +2365,6 @@ function applyAppStateRow(row){
   favorites = new Set(p.favorites || []);
   weeklyPlan = p.weeklyPlan || {};
   itemUsage = p.itemUsage || {};
-  categoryOverrides = p.categoryOverrides || {};
-  customCategories = p.customCategories || [];
-  removedCatalogItems = p.removedCatalogItems || [];
-  iconOverrides = p.iconOverrides || {};
   learnedLabels = p.learnedLabels || {};
   learnedBarcodes = p.learnedBarcodes || {};
   autoResetEnabled = !!p.autoResetEnabled;
@@ -2379,10 +2377,6 @@ function applyAppStateRow(row){
   localStorage.setItem('favorites', JSON.stringify([...favorites]));
   localStorage.setItem('weekly_plan', JSON.stringify(weeklyPlan));
   localStorage.setItem('item_usage', JSON.stringify(itemUsage));
-  localStorage.setItem('category_overrides', JSON.stringify(categoryOverrides));
-  localStorage.setItem('custom_categories', JSON.stringify(customCategories));
-  localStorage.setItem('removed_catalog_items', JSON.stringify(removedCatalogItems));
-  localStorage.setItem('icon_overrides', JSON.stringify(iconOverrides));
   localStorage.setItem('learned_labels', JSON.stringify(learnedLabels));
   localStorage.setItem('learned_barcodes', JSON.stringify(learnedBarcodes));
   localStorage.setItem('auto_reset_enabled', autoResetEnabled ? '1' : '0');
@@ -2395,6 +2389,37 @@ async function pushAppState(){
   try{
     await sbClient.from('user_data').update({payload: collectAppState(), updated_at: new Date().toISOString()}).eq('id', activeStateRowId);
   }catch(e){ /* offline — local copy is already saved */ }
+}
+
+// Categorization (category/icon overrides, custom categories, hidden catalog items) is kept as
+// its own shareable unit — separate from personal app state (fridge contents, favorites, history)
+// — so two people can share a consistent shopping-list layout without merging their fridges too.
+function collectCategorySettings(){
+  return { categoryOverrides, iconOverrides, customCategories, removedCatalogItems };
+}
+function applyCategorySettingsRow(row){
+  activeCategorySettingsRowId = row.id;
+  localStorage.setItem('active_category_settings_row', row.id);
+  const p = row.payload || {};
+  categoryOverrides = p.categoryOverrides || {};
+  iconOverrides = p.iconOverrides || {};
+  customCategories = p.customCategories || [];
+  removedCatalogItems = p.removedCatalogItems || [];
+  localStorage.setItem('category_overrides', JSON.stringify(categoryOverrides));
+  localStorage.setItem('icon_overrides', JSON.stringify(iconOverrides));
+  localStorage.setItem('custom_categories', JSON.stringify(customCategories));
+  localStorage.setItem('removed_catalog_items', JSON.stringify(removedCatalogItems));
+}
+async function pushCategorySettings(){
+  if(!currentUser || !activeCategorySettingsRowId || !sbClient) return;
+  try{
+    await sbClient.from('user_data').update({payload: collectCategorySettings(), updated_at: new Date().toISOString()}).eq('id', activeCategorySettingsRowId);
+  }catch(e){ /* offline — local copy is already saved */ }
+}
+function scheduleCategorySettingsPush(){
+  if(!currentUser || !activeCategorySettingsRowId) return;
+  clearTimeout(categorySettingsPushTimer);
+  categorySettingsPushTimer = setTimeout(pushCategorySettings, 1200);
 }
 function scheduleAppStatePush(){
   if(!currentUser || !activeStateRowId) return;
@@ -2487,6 +2512,19 @@ async function loadAccountData(){
     const sactiveId = (activeStateRowId && accountStateRows.find(r=>r.id===activeStateRowId)) ? activeStateRowId : smine.id;
     applyAppStateRow(accountStateRows.find(r=>r.id===sactiveId));
   }
+
+  accountCategorySettingsRows = await fetchUserDataRows('category_settings');
+  let cmine = accountCategorySettingsRows.find(r=>r.owner_id === currentUser.id);
+  if(!cmine){
+    const { data } = await sbClient.from('user_data').insert({
+      owner_id: currentUser.id, owner_email: currentUser.email, kind:'category_settings', payload: collectCategorySettings()
+    }).select().single();
+    if(data){ cmine = data; accountCategorySettingsRows.push(cmine); }
+  }
+  if(cmine){
+    const cactiveId = (activeCategorySettingsRowId && accountCategorySettingsRows.find(r=>r.id===activeCategorySettingsRowId)) ? activeCategorySettingsRowId : cmine.id;
+    applyCategorySettingsRow(accountCategorySettingsRows.find(r=>r.id===cactiveId));
+  }
   renderAll();
 }
 async function pushShoppingRow(){
@@ -2523,9 +2561,11 @@ async function doLogout(){
   activeShoppingRowId = null;
   activeRecipesRowId = null;
   activeStateRowId = null;
+  activeCategorySettingsRowId = null;
   localStorage.removeItem('active_shopping_row');
   localStorage.removeItem('active_recipes_row');
   localStorage.removeItem('active_state_row');
+  localStorage.removeItem('active_category_settings_row');
   renderAccountBox();
 }
 function renderAccountBox(){
@@ -3306,13 +3346,13 @@ function removeCatalogItem(item){
   if(!removedCatalogItems.includes(item)){
     removedCatalogItems.push(item);
     localStorage.setItem('removed_catalog_items', JSON.stringify(removedCatalogItems));
-    scheduleAppStatePush();
+    scheduleCategorySettingsPush();
   }
 }
 function restoreCatalogItem(item){
   removedCatalogItems = removedCatalogItems.filter(i=>i!==item);
   localStorage.setItem('removed_catalog_items', JSON.stringify(removedCatalogItems));
-  scheduleAppStatePush();
+  scheduleCategorySettingsPush();
 }
 
 function getCategoryItems(cat){
@@ -4333,6 +4373,7 @@ function renderAll(){
   renderWeekPlan();
   renderRecipeSyncSection();
   renderCustomRecipesList();
+  renderCategorySettingsSyncBox();
   renderCatOverridesUI();
   renderRemovedItemsList();
   renderAutoResetSettings();
@@ -4544,6 +4585,46 @@ function renderRemovedItemsList(){
       renderItemGrid();
     };
   });
+}
+
+function renderCategorySettingsSyncBox(){
+  const el = document.getElementById('categorySettingsSyncBox');
+  if(!el) return;
+  if(!currentUser){
+    el.innerHTML = '<p class="custom-empty">התחברו לחשבון (למעלה) כדי לשתף סיווגים</p>';
+    return;
+  }
+  const picker = accountCategorySettingsRows.length>1 ? `
+    <div class="acct-picker">
+      <div class="settings-hint" style="font-weight:700;margin-bottom:4px;">אילו סיווגים להציג:</div>
+      <select id="catSettingsRowPicker" class="week-select">
+        ${accountCategorySettingsRows.map(r=>`<option value="${r.id}" ${r.id===activeCategorySettingsRowId?'selected':''}>${r.owner_id===currentUser.id?'שלי':r.owner_email}</option>`).join('')}
+      </select>
+    </div>` : '';
+  el.innerHTML = `
+    <div class="sync-box">
+      ${picker}
+      <div class="add-row" style="margin-top:${picker?'10px':'0'};">
+        <input type="email" id="shareCategorySettingsEmail" placeholder="אימייל של השותף/ה">
+        <button id="shareCategorySettingsBtn">שתפו</button>
+      </div>
+      <div class="cam-status" id="catSettingsStatus"></div>
+    </div>`;
+  const pickerEl = document.getElementById('catSettingsRowPicker');
+  if(pickerEl) pickerEl.onchange = ()=>{
+    const row = accountCategorySettingsRows.find(r=>r.id===pickerEl.value);
+    if(row){ applyCategorySettingsRow(row); renderAll(); }
+  };
+  document.getElementById('shareCategorySettingsBtn').onclick = async ()=>{
+    const email = norm(document.getElementById('shareCategorySettingsEmail').value);
+    if(!email) return;
+    const status = document.getElementById('catSettingsStatus');
+    status.textContent = 'משתפים...';
+    try{
+      const result = await shareRow(activeCategorySettingsRowId, email);
+      status.textContent = result === 'ok' ? '✓ שותף בהצלחה' : 'שגיאה: ' + result;
+    }catch(e){ status.textContent = 'שגיאה: ' + (e.message||''); }
+  };
 }
 
 function renderCatOverridesUI(){
