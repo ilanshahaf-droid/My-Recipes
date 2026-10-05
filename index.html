@@ -3386,8 +3386,15 @@ async function createSyncBucket(){
   if(!res.ok) throw new Error('create failed: ' + res.status);
   return code;
 }
+// The old 6-character code sync (shopping_sync table) is only for people WITHOUT an account. Once there is a login
+// (or a saved login that is still being restored at startup), the account copy is the single source of truth —
+// reading the old table in that window is what made stale items flash back after a refresh.
+function accountSessionLikely(){
+  if(currentUser) return true;
+  try{ return Object.keys(localStorage).some(k=>/^sb-.+-auth-token$/.test(k)); }catch(e){ return false; }
+}
 async function pushSync(){
-  if(!syncCode) return;
+  if(!syncCode || accountSessionLikely()) return;
   try{
     await fetch(`${SUPABASE_URL}/rest/v1/shopping_sync?on_conflict=code`, {
       method:'POST',
@@ -3397,7 +3404,7 @@ async function pushSync(){
   }catch(e){ /* offline, or sync service unreachable — will retry on next change */ }
 }
 async function pullSync(){
-  if(!syncCode) return;
+  if(!syncCode || accountSessionLikely()) return;
   try{
     const res = await fetch(`${SUPABASE_URL}/rest/v1/shopping_sync?code=eq.${syncCode}&select=items,bought`, {
       headers: supaHeaders()
@@ -3405,6 +3412,7 @@ async function pullSync(){
     if(!res.ok) return;
     const rows = await res.json();
     if(!rows.length) return;
+    if(accountSessionLikely()) return;   // a login appeared while we were fetching — don't overwrite the account copy
     shoppingList = new Set(rows[0].items||[]);
     boughtItems = new Set(rows[0].bought||[]);
     getActiveList().items = [...shoppingList];
