@@ -1316,6 +1316,118 @@
     cursor:pointer;
   }
   .added-toast.show{transform:translate(-50%,0);}
+  .shop-check{
+    width:30px; height:30px;
+    border-radius:50%;
+    border:2px solid var(--line);
+    background:transparent;
+    padding:0;
+    flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:14px; font-weight:700;
+    color:transparent;
+    cursor:pointer;
+    transition:all .15s;
+  }
+  .shop-item.bought .shop-check{background:var(--herb); border-color:var(--herb); color:#fff;}
+  .shop-item-icon{border:none; padding:0; cursor:pointer;}
+  .shop-item-icon:active{transform:scale(.92);}
+  .shop-item-name{min-width:0;}
+  .shop-item-note{font-size:12px; font-weight:400; color:var(--ink-soft); margin-top:2px; white-space:pre-wrap;}
+  .shop-item-more{color:var(--ink-soft); opacity:.5; font-size:20px; flex-shrink:0;}
+
+  .lists-strip{display:flex; align-items:stretch; gap:8px; margin-bottom:14px;}
+  .lists-all-btn{
+    flex-shrink:0; width:64px;
+    border:1px solid var(--line); background:var(--surface); color:var(--ink);
+    border-radius:16px; cursor:pointer; font-family:'Assistant',sans-serif;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+  }
+  .lists-all-btn span{font-size:20px; line-height:1;}
+  .lists-all-btn small{font-size:10.5px; font-weight:700; color:var(--ink-soft);}
+  .lists-scroller{display:flex; gap:8px; overflow-x:auto; flex:1; padding-bottom:4px; scrollbar-width:none;}
+  .lists-scroller::-webkit-scrollbar{display:none;}
+  .list-card{
+    flex:none; min-width:132px; max-width:200px;
+    display:flex; flex-direction:column; align-items:flex-start; gap:6px;
+    padding:12px 14px;
+    border:1px solid var(--line); background:var(--surface); color:var(--ink);
+    border-radius:16px; cursor:pointer; text-align:right;
+    font-family:'Assistant',sans-serif;
+  }
+  .list-card-name{font-size:15px; font-weight:800; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .list-card-count{font-size:12px; font-weight:600; color:var(--ink-soft);}
+  .list-card-bar{display:block; width:100%; height:6px; border-radius:100px; background:var(--line); overflow:hidden;}
+  .list-card-bar i{display:block; height:100%; background:var(--herb); border-radius:100px;}
+  .list-card.active{background:var(--ink); border-color:var(--ink); color:var(--paper);}
+  .list-card.active .list-card-count{color:var(--paper); opacity:.8;}
+  .list-card.active .list-card-bar{background:rgba(255,255,255,.25);}
+  .list-card-add{align-items:center; justify-content:center; background:none; border:1px dashed var(--line); color:var(--ink-soft); font-weight:700; font-size:13.5px; min-width:110px;}
+  .list-card-plus{font-size:20px; line-height:1;}
+
+  .sheet-overlay{position:fixed; inset:0; z-index:150; background:rgba(0,0,0,.45); display:flex; align-items:flex-end; justify-content:center;}
+  .sheet-overlay.top{z-index:160;}
+  .sheet-box{
+    background:var(--surface); color:var(--ink);
+    width:100%; max-width:560px; max-height:90vh; overflow-y:auto;
+    border-radius:22px 22px 0 0;
+    padding:8px 18px calc(18px + env(safe-area-inset-bottom,0px));
+    animation:sheetUp .22s ease;
+  }
+  .sheet-overlay.tall .sheet-box{min-height:62vh;}
+  @keyframes sheetUp{from{transform:translateY(40px); opacity:.6;} to{transform:none; opacity:1;}}
+  .sheet-handle{width:44px; height:5px; border-radius:100px; background:var(--line); margin:4px auto 8px;}
+  .sheet-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+  .sheet-head h3{margin:0; font-family:'Frank Ruhl Libre',serif; font-size:20px;}
+  .sheet-x{border:none; background:var(--paper); color:var(--ink); width:34px; height:34px; border-radius:50%; font-size:20px; cursor:pointer;}
+  .is-name-row{display:flex; gap:10px; align-items:center;}
+  .is-icon-btn{flex-shrink:0; width:52px; height:52px; border-radius:50%; border:1px solid var(--line); background:var(--paper); font-size:26px; cursor:pointer;}
+  .is-name-row input, .is-qty-row input, #isIconInput, #isNote, #cpName{
+    flex:1; width:100%;
+    border:1px solid var(--line); background:var(--paper); color:var(--ink);
+    border-radius:12px; padding:12px 14px; font-size:16px; font-family:'Assistant',sans-serif;
+  }
+  #isNote{resize:vertical;}
+  #isIconInput{width:90px; flex:none; text-align:center;}
+  .is-name-row input{font-size:18px; font-weight:700;}
+  .is-label{font-size:12.5px; font-weight:700; color:var(--ink-soft); margin:14px 0 6px;}
+  .is-qty-row{display:flex; gap:8px;}
+  .is-qty-row button{flex-shrink:0; width:46px; border:1px solid var(--line); background:var(--paper); color:var(--ink); border-radius:12px; font-size:20px; cursor:pointer;}
+  #isPlus{background:var(--herb); border-color:var(--herb); color:var(--on-herb,#fff);}
+  .is-cat-btn{
+    width:100%; display:flex; align-items:center; justify-content:space-between;
+    border:1px solid var(--line); background:var(--paper); color:var(--ink);
+    border-radius:12px; padding:13px 14px; font-size:16px; font-weight:700; cursor:pointer; font-family:'Assistant',sans-serif;
+  }
+  .is-cat-arrow{color:var(--ink-soft);}
+  .is-error{color:var(--brick); font-size:13px; min-height:18px; margin-top:8px;}
+  .is-actions{display:flex; gap:10px; margin-top:8px;}
+  .is-done{flex:1; border:none; background:var(--herb); color:var(--on-herb,#fff); padding:14px; border-radius:14px; font-size:16px; font-weight:800; cursor:pointer; font-family:'Assistant',sans-serif;}
+  .is-del{flex-shrink:0; width:54px; border:none; background:var(--brick-soft); color:var(--brick); border-radius:14px; font-size:20px; cursor:pointer;}
+  .cp-item{font-size:15px; font-weight:700; background:var(--paper); display:inline-block; padding:6px 14px; border-radius:100px; margin-bottom:4px;}
+  .cp-scroll{max-height:46vh; overflow-y:auto;}
+  .cp-row{width:100%; display:flex; align-items:center; gap:14px; padding:12px 6px; border:none; border-bottom:1px solid var(--line); background:none; color:var(--ink); font-size:16px; cursor:pointer; text-align:right; font-family:'Assistant',sans-serif;}
+  .cp-row.current{font-weight:800;}
+  .cp-icon{font-size:24px; width:34px; text-align:center; flex-shrink:0;}
+  .cp-name{flex:1;}
+  .cp-check{color:var(--herb); font-weight:800;}
+  .cp-foot{margin-top:10px;}
+  .cp-new-btn{width:100%; border:none; background:var(--herb); color:var(--on-herb,#fff); padding:14px; border-radius:14px; font-size:16px; font-weight:800; cursor:pointer; font-family:'Assistant',sans-serif;}
+  .lb-list{display:flex; flex-direction:column; gap:12px;}
+  .lb-card{display:flex; align-items:stretch; background:var(--paper); border:2px solid transparent; border-radius:18px; overflow:hidden;}
+  .lb-card.active{border-color:var(--ink);}
+  .lb-main{flex:1; text-align:right; border:none; background:none; color:var(--ink); padding:18px 18px 16px; cursor:pointer; font-family:'Assistant',sans-serif; display:flex; flex-direction:column; gap:12px; min-width:0;}
+  .lb-name{font-family:'Frank Ruhl Libre',serif; font-size:22px; font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .lb-row{display:flex; align-items:center; gap:12px;}
+  .lb-count{font-size:15px; font-weight:700; color:var(--ink-soft); min-width:44px;}
+  .lb-bar{flex:1; height:10px; border-radius:100px; background:var(--line); overflow:hidden;}
+  .lb-bar i{display:block; height:100%; background:var(--herb); border-radius:100px;}
+  .lb-menu{flex-shrink:0; width:52px; border:none; background:none; color:var(--ink-soft); font-size:22px; cursor:pointer;}
+  .lb-foot{margin-top:16px;}
+  .lb-foot button{width:100%; border:none; background:var(--herb); color:var(--on-herb,#fff); padding:15px; border-radius:100px; font-size:16px; font-weight:800; cursor:pointer; font-family:'Assistant',sans-serif;}
+  .lm-row{width:100%; text-align:right; border:none; border-bottom:1px solid var(--line); background:none; color:var(--ink); padding:16px 6px; font-size:16px; cursor:pointer; font-family:'Assistant',sans-serif;}
+  .lm-row:disabled{opacity:.4; cursor:default;}
+  .lm-row.danger{color:var(--brick);}
   .shared-list-title{
     font-size:12.5px;
     font-weight:700;
@@ -2096,6 +2208,14 @@ function setCategoryOverride(item, cat){
   scheduleCategorySettingsPush();
 }
 
+const CATEGORY_ICONS = {"ירקות":"🥕","חלבונים":"🍗","מוצרי חלב":"🥛","פחמימות":"🍞","מזווה":"🫙","פירות":"🍎","תיבול ואפייה":"🧂","קפואים":"🧊","טואלטיקה":"🧴","חטיפים ופיצוחים":"🍿","אחר":"🛒"};
+let categoryIcons = JSON.parse(localStorage.getItem('category_icons')||'{}');
+function categoryIconOf(c){ return categoryIcons[c] || CATEGORY_ICONS[c] || '🏷️'; }
+function setCategoryIcon(c, icon){
+  if(icon) categoryIcons[c] = icon; else delete categoryIcons[c];
+  localStorage.setItem('category_icons', JSON.stringify(categoryIcons));
+  scheduleCategorySettingsPush();
+}
 let customCategories = JSON.parse(localStorage.getItem('custom_categories')||'[]');
 function allCategoryNames(){ return [...new Set(Object.keys(CATALOG).concat(customCategories))]; }
 // Self-healing: if a category the user once added by hand later gets baked into the permanent
@@ -2121,6 +2241,7 @@ function addCustomCategory(name){
 function deleteCustomCategory(name){
   customCategories = customCategories.filter(c=>c!==name);
   localStorage.setItem('custom_categories', JSON.stringify(customCategories));
+  if(categoryIcons[name]){ delete categoryIcons[name]; localStorage.setItem('category_icons', JSON.stringify(categoryIcons)); }
   // items that were classified under the deleted category fall back to their default category
   Object.keys(categoryOverrides).forEach(item=>{
     if(categoryOverrides[item] === name) delete categoryOverrides[item];
@@ -2474,8 +2595,8 @@ if(!shoppingLists){
   };
   localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
 }
-let activeListId = localStorage.getItem('active_shopping_list') || 'main';
-if(!shoppingLists[activeListId]) activeListId = 'main';
+let activeListId = 'main';   // the app always opens on the main list; other lists are one tap away
+if(!shoppingLists[activeListId]) activeListId = Object.keys(shoppingLists)[0];
 function getActiveList(){
   const list = shoppingLists[activeListId];
   if(list && !list.quantities) list.quantities = {};
@@ -2569,7 +2690,7 @@ async function pushAppState(){
 // its own shareable unit — separate from personal app state (fridge contents, favorites, history)
 // — so two people can share a consistent shopping-list layout without merging their fridges too.
 function collectCategorySettings(){
-  return { categoryOverrides, iconOverrides, customCategories, removedCatalogItems };
+  return { categoryOverrides, iconOverrides, customCategories, removedCatalogItems, categoryIcons };
 }
 function applyCategorySettingsRow(row){
   activeCategorySettingsRowId = row.id;
@@ -2579,6 +2700,8 @@ function applyCategorySettingsRow(row){
   iconOverrides = p.iconOverrides || {};
   customCategories = p.customCategories || [];
   removedCatalogItems = p.removedCatalogItems || [];
+  categoryIcons = p.categoryIcons || {};
+  localStorage.setItem('category_icons', JSON.stringify(categoryIcons));
   const wasPruned = pruneCustomCategoriesAgainstCatalog();
   localStorage.setItem('category_overrides', JSON.stringify(categoryOverrides));
   localStorage.setItem('icon_overrides', JSON.stringify(iconOverrides));
@@ -2643,7 +2766,7 @@ function applyShoppingRow(row){
   lastShoppingUpdatedAt = row.updated_at || lastShoppingUpdatedAt;
   localStorage.setItem('active_shopping_row', row.id);
   shoppingLists = (row.payload && Object.keys(row.payload).length) ? row.payload : {main:{name:'רשימה ראשית', items:[], bought:[], syncCode:null}};
-  activeListId = Object.keys(shoppingLists)[0];
+  if(!shoppingLists[activeListId]) activeListId = shoppingLists.main ? 'main' : Object.keys(shoppingLists)[0];
   localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
   localStorage.setItem('active_shopping_list', activeListId);
   shoppingList = new Set(getActiveList().items||[]);
@@ -3209,6 +3332,8 @@ function saveShoppingList(){
     });
     Object.keys(list.addedBy).forEach(k=>{ if(!shoppingList.has(k)) delete list.addedBy[k]; });
   }
+  list.notes = list.notes || {};
+  ['notes','quantities'].forEach(m=>{ if(list[m]) Object.keys(list[m]).forEach(k=>{ if(!shoppingList.has(k)) delete list[m][k]; }); });
   list.items = [...shoppingList];
   localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
   pushSync();
@@ -3326,6 +3451,7 @@ function createShoppingList(){
     const id = 'list_' + Date.now();
     shoppingLists[id] = {name, items: [], bought: [], syncCode: null};
     localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
+    closeSheet('listsSheet');
     switchShoppingList(id);
   });
 }
@@ -3334,37 +3460,282 @@ function deleteShoppingList(id){
   showConfirmModal(`למחוק את הרשימה "${shoppingLists[id].name}"? הפעולה לא הפיכה.`, ()=>{
     delete shoppingLists[id];
     localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
-    if(activeListId === id) switchShoppingList('main');
-    else { scheduleShoppingPush(); renderShoppingPanel(); }
+    if(activeListId === id){
+      // the open list is gone: move to the main list WITHOUT trying to save the deleted list's state first
+      activeListId = shoppingLists.main ? 'main' : Object.keys(shoppingLists)[0];
+      localStorage.setItem('active_shopping_list', activeListId);
+      shoppingList = new Set(getActiveList().items||[]);
+      boughtItems = new Set(getActiveList().bought||[]);
+      syncCode = getActiveList().syncCode || null;
+    }
+    scheduleShoppingPush();
+    refreshShoppingViews();
+    if(document.getElementById('listsSheet')) openListsSheet();
   });
 }
+function listStats(id){
+  const l = shoppingLists[id] || {};
+  const live = id === activeListId;
+  const items = live ? [...shoppingList] : (l.items || []);
+  const bought = live ? boughtItems : new Set(l.bought || []);
+  return { total: items.length, done: items.filter(i=>bought.has(i)).length };
+}
 function renderListSwitcher(){
-  const chips = Object.entries(shoppingLists).map(([id,list])=>{
-    const active = id === activeListId;
-    if(id === 'main'){
-      return `<button type="button" class="list-chip${active?' active':''}" data-id="${id}">${list.name}</button>`;
-    }
+  const cards = Object.entries(shoppingLists).map(([id,list])=>{
+    const { total, done } = listStats(id);
+    const pct = total ? Math.round(done/total*100) : 0;
     return `
-      <span class="list-chip-wrap">
-        <button type="button" class="list-chip${active?' active':''}" data-id="${id}">${list.name}</button>
-        <button type="button" class="list-chip-x" data-id="${id}" aria-label="מחיקת רשימה">×</button>
-      </span>`;
+      <button type="button" class="list-card${id===activeListId?' active':''}" data-id="${escAttr(id)}">
+        <span class="list-card-name">${escHtml(list.name)}</span>
+        <span class="list-card-count">${total ? `${done}/${total}` : 'ריקה'}</span>
+        <span class="list-card-bar"><i style="width:${pct}%"></i></span>
+      </button>`;
   }).join('');
   return `
-    <div class="list-switcher">
-      ${chips}
-      <button type="button" class="list-chip list-chip-add" id="addListBtn">+ רשימה חדשה</button>
+    <div class="lists-strip">
+      <button type="button" class="lists-all-btn" id="openListsBtn" aria-label="כל הרשימות"><span>☰</span><small>כל הרשימות</small></button>
+      <div class="lists-scroller">
+        ${cards}
+        <button type="button" class="list-card list-card-add" id="addListBtn"><span class="list-card-plus">＋</span><span>רשימה חדשה</span></button>
+      </div>
     </div>`;
 }
 function wireListSwitcher(){
-  document.querySelectorAll('.list-chip[data-id]').forEach(btn=>{
+  document.querySelectorAll('.list-card[data-id]').forEach(btn=>{
     btn.onclick = ()=> switchShoppingList(btn.dataset.id);
-  });
-  document.querySelectorAll('.list-chip-x').forEach(x=>{
-    x.onclick = ()=> deleteShoppingList(x.dataset.id);
   });
   const addBtn = document.getElementById('addListBtn');
   if(addBtn) addBtn.onclick = createShoppingList;
+  const allBtn = document.getElementById('openListsBtn');
+  if(allBtn) allBtn.onclick = openListsSheet;
+  const active = document.querySelector('.lists-scroller .list-card.active');
+  if(active && active.scrollIntoView) active.scrollIntoView({ block:'nearest', inline:'center' });
+}
+
+// ---- bottom sheets (item editor, category picker, all-lists) ----
+function escHtml(v){ return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escAttr(v){ return escHtml(v); }
+function closeSheet(id){ const el = document.getElementById(id); if(el) el.remove(); }
+function openSheet(id, innerHtml, cls){
+  closeSheet(id);
+  const overlay = document.createElement('div');
+  overlay.id = id;
+  overlay.className = 'sheet-overlay' + (cls ? ' ' + cls : '');
+  overlay.innerHTML = `<div class="sheet-box" role="dialog" aria-modal="true"><div class="sheet-handle"></div>${innerHtml}</div>`;
+  overlay.addEventListener('click', e=>{ if(e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+  return overlay;
+}
+function refreshShoppingViews(){
+  renderShoppingPanel();
+  renderTabBadges();
+  if(shoppingModeActive) renderShoppingModeList();
+}
+function stepQtyText(txt, delta){
+  txt = (txt || '').trim();
+  if(!txt) return delta > 0 ? '1' : '';
+  const m = txt.match(/^(\d+(?:[.,]\d+)?)(.*)$/);
+  if(!m) return txt;
+  const n = parseFloat(m[1].replace(',', '.')) + delta;
+  return n <= 0 ? '' : `${n}${m[2]}`;
+}
+// Applies name / quantity / note / icon edits to one shopping item in one go.
+function applyItemEdits(item, e){
+  const list = getActiveList();
+  list.quantities = list.quantities || {}; list.notes = list.notes || {};
+  let name = item;
+  if(e.name && e.name !== item){
+    if(shoppingList.has(e.name)) return { ok:false, reason:'exists' };
+    const moveKey = (obj)=>{ if(Object.prototype.hasOwnProperty.call(obj, item)){ obj[e.name] = obj[item]; delete obj[item]; } };
+    shoppingList.delete(item); shoppingList.add(e.name);
+    if(boughtItems.has(item)){ boughtItems.delete(item); boughtItems.add(e.name); }
+    moveKey(list.quantities); moveKey(list.notes);
+    if(categoryOverrides[item] && !categoryOverrides[e.name]) setCategoryOverride(e.name, categoryOverrides[item]);
+    if(iconOverrides[item] && !iconOverrides[e.name]) setIconOverride(e.name, iconOverrides[item]);
+    name = e.name;
+  }
+  if(e.qty) list.quantities[name] = e.qty; else delete list.quantities[name];
+  if(e.note) list.notes[name] = e.note; else delete list.notes[name];
+  if(e.icon) setIconOverride(name, e.icon); else if(iconOverrides[name]) setIconOverride(name, null);
+  saveShoppingList();
+  saveBought();
+  return { ok:true, name };
+}
+function deleteShopItem(item){
+  const list = getActiveList();
+  shoppingList.delete(item);
+  boughtItems.delete(item);
+  if(list.quantities) delete list.quantities[item];
+  if(list.notes) delete list.notes[item];
+  saveShoppingList();
+  saveBought();
+}
+function openItemSheet(item){
+  const list = getActiveList();
+  const note0 = (list.notes || {})[item] || '';
+  const ov = openSheet('itemSheet', `
+    <div class="sheet-head"><h3>עריכת פריט</h3><button type="button" class="sheet-x" id="isClose" aria-label="סגירה">×</button></div>
+    <div class="is-name-row">
+      <button type="button" class="is-icon-btn" id="isIconBtn" aria-label="שינוי קטגוריה">${escHtml(iconOf(item))}</button>
+      <input id="isName" type="text" value="${escAttr(item)}" aria-label="שם הפריט">
+    </div>
+    <div class="is-label">כמות</div>
+    <div class="is-qty-row">
+      <button type="button" id="isPlus" aria-label="הוסיפו אחד">＋</button>
+      <button type="button" id="isMinus" aria-label="הורידו אחד">－</button>
+      <input id="isQty" type="text" value="${escAttr(qtyOfShopItem(item))}" placeholder="למשל: 2 ק״ג" aria-label="כמות">
+    </div>
+    <div class="is-label">הערה</div>
+    <textarea id="isNote" rows="2" placeholder="למשל: בלי סוכר, או מה שבמבצע" aria-label="הערה">${escHtml(note0)}</textarea>
+    <div class="is-label">קטגוריה</div>
+    <button type="button" class="is-cat-btn" id="isCat"><span id="isCatLabel"></span><span class="is-cat-arrow">‹</span></button>
+    <div class="is-label">אייקון משלכם (אימוג׳י, לא חובה)</div>
+    <input id="isIconInput" type="text" maxlength="4" value="${escAttr(iconOverrides[item] || '')}" placeholder="🙂" aria-label="אייקון">
+    <div class="is-error" id="isError"></div>
+    <div class="is-actions">
+      <button type="button" class="is-done" id="isDone">שמרו</button>
+      <button type="button" class="is-del" id="isDel" aria-label="מחיקת הפריט">🗑</button>
+    </div>`);
+  const $ = (id)=> ov.querySelector('#' + id);
+  const paintCat = ()=>{ const c = catOf(item); $('isCatLabel').textContent = `${categoryIconOf(c)}  ${c}`; };
+  paintCat();
+  $('isClose').onclick = ()=> ov.remove();
+  const qtyInput = $('isQty');
+  $('isPlus').onclick = ()=>{ qtyInput.value = stepQtyText(qtyInput.value, 1); };
+  $('isMinus').onclick = ()=>{ qtyInput.value = stepQtyText(qtyInput.value, -1); };
+  const openCats = ()=> openCategoryPicker(item, ()=>{ paintCat(); });
+  $('isCat').onclick = openCats;
+  $('isIconBtn').onclick = openCats;
+  $('isDel').onclick = ()=>{ deleteShopItem(item); ov.remove(); refreshShoppingViews(); };
+  $('isDone').onclick = ()=>{
+    const name = norm($('isName').value);
+    if(!name){ $('isError').textContent = 'אי אפשר להשאיר שם ריק.'; return; }
+    const res = applyItemEdits(item, { name, qty: norm(qtyInput.value), note: norm($('isNote').value), icon: norm($('isIconInput').value) });
+    if(!res.ok){ $('isError').textContent = 'פריט בשם הזה כבר קיים ברשימה.'; return; }
+    ov.remove();
+    refreshShoppingViews();
+    renderItemGrid();
+  };
+}
+function openCategoryPicker(item, onPicked){
+  const current = catOf(item);
+  const fixed = Object.keys(CATALOG).concat(['אחר']);
+  const row = (c)=>`
+    <button type="button" class="cp-row${c===current?' current':''}" data-cat="${escAttr(c)}">
+      <span class="cp-icon">${escHtml(categoryIconOf(c))}</span><span class="cp-name">${escHtml(c)}</span>${c===current?'<span class="cp-check">✓</span>':''}
+    </button>`;
+  const ov = openSheet('catPickerSheet', `
+    <div class="sheet-head"><h3>שינוי קטגוריה</h3><button type="button" class="sheet-x" id="cpClose" aria-label="סגירה">×</button></div>
+    <div class="cp-item">${escHtml(iconOf(item))} ${escHtml(item)}</div>
+    <div class="cp-scroll">
+      <div class="is-label">קטגוריות קבועות</div>
+      ${fixed.map(row).join('')}
+      ${customCategories.length ? `<div class="is-label">הקטגוריות שלי</div>${customCategories.map(row).join('')}` : ''}
+    </div>
+    <div class="cp-foot">
+      <button type="button" class="cp-new-btn" id="cpNew">＋ צרו קטגוריה חדשה</button>
+      <div class="cp-new-form" id="cpForm" style="display:none;">
+        <div class="add-row">
+          <input id="cpName" type="text" placeholder="שם הקטגוריה" aria-label="שם הקטגוריה">
+          <input id="cpEmoji" type="text" maxlength="4" placeholder="🏷️" style="flex:0 1 70px; text-align:center;" aria-label="אימוג׳י">
+          <button type="button" id="cpCreate">צרו</button>
+        </div>
+        <div class="is-error" id="cpError"></div>
+      </div>
+    </div>`, 'top');
+  const pick = (cat)=>{
+    const nativeCat = ING_TO_CAT[item] || 'אחר';
+    if(cat === nativeCat) setCategoryOverride(item, null); else setCategoryOverride(item, cat);
+    ov.remove();
+    refreshShoppingViews();
+    renderItemGrid();
+    if(onPicked) onPicked(cat);
+  };
+  ov.querySelector('#cpClose').onclick = ()=> ov.remove();
+  ov.querySelectorAll('.cp-row').forEach(b=>{ b.onclick = ()=> pick(b.dataset.cat); });
+  ov.querySelector('#cpNew').onclick = ()=>{ ov.querySelector('#cpForm').style.display = 'block'; ov.querySelector('#cpNew').style.display = 'none'; ov.querySelector('#cpName').focus(); };
+  ov.querySelector('#cpCreate').onclick = ()=>{
+    const name = norm(ov.querySelector('#cpName').value);
+    const err = ov.querySelector('#cpError');
+    if(!name){ err.textContent = 'כתבו שם לקטגוריה.'; return; }
+    if(!addCustomCategory(name)){ err.textContent = 'קטגוריה בשם הזה כבר קיימת.'; return; }
+    const em = norm(ov.querySelector('#cpEmoji').value);
+    if(em) setCategoryIcon(name, em);
+    renderCatTabs();
+    pick(name);
+  };
+}
+function clearBoughtInList(id){
+  const l = shoppingLists[id];
+  if(!l) return;
+  if(id === activeListId){
+    [...boughtItems].forEach(i=>{ shoppingList.delete(i); });
+    boughtItems.clear();
+    saveShoppingList(); saveBought();
+  } else {
+    const bought = new Set(l.bought || []);
+    l.items = (l.items || []).filter(i=>!bought.has(i));
+    l.bought = [];
+    ['quantities','notes','addedBy'].forEach(m=>{ if(l[m]) Object.keys(l[m]).forEach(k=>{ if(!l.items.includes(k)) delete l[m][k]; }); });
+    localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
+    scheduleShoppingPush();
+  }
+}
+function renameShoppingList(id){
+  const l = shoppingLists[id];
+  if(!l) return;
+  showPromptModal('שם חדש לרשימה:', (name)=>{
+    l.name = name;
+    localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
+    scheduleShoppingPush();
+    refreshShoppingViews();
+    if(document.getElementById('listsSheet')) openListsSheet();
+  }, l.name);
+}
+function openListMenu(id){
+  const l = shoppingLists[id];
+  if(!l) return;
+  const { done } = listStats(id);
+  const ov = openSheet('listMenuSheet', `
+    <div class="sheet-head"><h3>${escHtml(l.name)}</h3><button type="button" class="sheet-x" id="lmClose" aria-label="סגירה">×</button></div>
+    <button type="button" class="lm-row" id="lmRename">✏️  שינוי שם</button>
+    <button type="button" class="lm-row" id="lmClear" ${done?'':'disabled'}>🧹  מחקו פריטים שסומנו (${done})</button>
+    ${id==='main' ? '' : '<button type="button" class="lm-row danger" id="lmDelete">🗑  מחיקת הרשימה</button>'}`, 'top');
+  ov.querySelector('#lmClose').onclick = ()=> ov.remove();
+  ov.querySelector('#lmRename').onclick = ()=>{ ov.remove(); renameShoppingList(id); };
+  ov.querySelector('#lmClear').onclick = ()=>{
+    ov.remove();
+    showConfirmModal(`למחוק את ${done} הפריטים שסומנו ב"${l.name}"?`, ()=>{
+      clearBoughtInList(id);
+      refreshShoppingViews();
+      if(document.getElementById('listsSheet')) openListsSheet();
+    });
+  };
+  const del = ov.querySelector('#lmDelete');
+  if(del) del.onclick = ()=>{ ov.remove(); deleteShoppingList(id); };
+}
+function openListsSheet(){
+  const card = (id)=>{
+    const l = shoppingLists[id];
+    const { total, done } = listStats(id);
+    const pct = total ? Math.round(done/total*100) : 0;
+    return `
+      <div class="lb-card${id===activeListId?' active':''}">
+        <button type="button" class="lb-main" data-id="${escAttr(id)}">
+          <span class="lb-name">${escHtml(l.name)}</span>
+          <span class="lb-row"><span class="lb-count">${total ? `${done}/${total}` : 'ריקה'}</span><span class="lb-bar"><i style="width:${pct}%"></i></span></span>
+        </button>
+        <button type="button" class="lb-menu" data-id="${escAttr(id)}" aria-label="אפשרויות הרשימה">⋮</button>
+      </div>`;
+  };
+  const ov = openSheet('listsSheet', `
+    <div class="sheet-head"><h3>הרשימות שלי</h3><button type="button" class="sheet-x" id="lbClose" aria-label="סגירה">×</button></div>
+    <div class="lb-list">${Object.keys(shoppingLists).map(card).join('')}</div>
+    <div class="lb-foot"><button type="button" id="lbNew">＋ רשימה חדשה</button></div>`, 'tall');
+  ov.querySelector('#lbClose').onclick = ()=> ov.remove();
+  ov.querySelectorAll('.lb-main').forEach(b=>{ b.onclick = ()=>{ switchShoppingList(b.dataset.id); ov.remove(); }; });
+  ov.querySelectorAll('.lb-menu').forEach(b=>{ b.onclick = ()=> openListMenu(b.dataset.id); });
+  ov.querySelector('#lbNew').onclick = createShoppingList;
 }
 function saveFavorites(){ localStorage.setItem('favorites', JSON.stringify([...favorites])); scheduleAppStatePush(); }
 
@@ -4440,13 +4811,13 @@ function renderShoppingPanel(){
       const bought = boughtItems.has(item);
       const emoji = iconOf(item);
       const qty = qtyOfShopItem(item);
+      const note = ((getActiveList().notes)||{})[item] || '';
       html += `
-        <div class="shop-item ${bought?'bought':''}" data-item="${item}">
-          <div class="shop-check">${bought?'✓':''}</div>
-          <div class="shop-item-icon">${emoji}</div>
-          <div class="shop-item-name">${item}${qty?` <span class="shop-item-qty">(${qty})</span>`:''}</div>
-          <button class="shop-item-qty-btn" aria-label="כמות">${qty?'✎':'+כמות'}</button>
-          <button class="shop-item-del" aria-label="מחיקה">×</button>
+        <div class="shop-item ${bought?'bought':''}" data-item="${escAttr(item)}">
+          <button type="button" class="shop-check" aria-label="סימון כנקנה">${bought?'✓':''}</button>
+          <button type="button" class="shop-item-icon" aria-label="שינוי קטגוריה">${emoji}</button>
+          <div class="shop-item-name">${escHtml(item)}${qty?` <span class="shop-item-qty">(${escHtml(qty)})</span>`:''}${note?`<div class="shop-item-note">${escHtml(note)}</div>`:''}</div>
+          <span class="shop-item-more" aria-hidden="true">‹</span>
         </div>`;
     });
     html += `</div>`;
@@ -4465,33 +4836,16 @@ function renderShoppingPanel(){
 
   el.querySelectorAll('.shop-item').forEach(row=>{
     const item = row.dataset.item;
-    row.onclick = (e)=>{
-      if(e.target.classList.contains('shop-item-del') || e.target.classList.contains('shop-item-qty-btn')) return;
+    // the circle marks bought; the emoji opens the category picker; the rest of the row opens the item editor
+    row.querySelector('.shop-check').onclick = (e)=>{
+      e.stopPropagation();
       if(boughtItems.has(item)) boughtItems.delete(item);
       else boughtItems.add(item);
       saveBought();
       renderShoppingPanel();
     };
-    row.querySelector('.shop-item-del').onclick = (e)=>{
-      e.stopPropagation();
-      shoppingList.delete(item);
-      boughtItems.delete(item);
-      setItemQuantity(item, null);
-      saveShoppingList();
-      saveBought();
-      renderShoppingPanel();
-    };
-    row.querySelector('.shop-item-qty-btn').onclick = (e)=>{
-      e.stopPropagation();
-      const currentQty = qtyOfShopItem(item);
-      showPromptModal(`כמות עבור "${item}":`, (val)=>{
-        setItemQuantity(item, val);
-        renderShoppingPanel();
-      }, currentQty, currentQty ? ()=>{
-        setItemQuantity(item, null);
-        renderShoppingPanel();
-      } : undefined);
-    };
+    row.querySelector('.shop-item-icon').onclick = (e)=>{ e.stopPropagation(); openCategoryPicker(item); };
+    row.onclick = ()=> openItemSheet(item);
   });
 
   const toggleBtn = document.getElementById('toggleCheckedBtn');
