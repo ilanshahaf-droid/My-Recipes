@@ -1297,6 +1297,25 @@
   .household-member:last-child{border-bottom:none;}
   .household-member > span:first-child{flex:1; word-break:break-all;}
   .household-role{font-size:11.5px; color:var(--herb); font-weight:700;}
+  .added-toast{
+    position:fixed;
+    top:calc(12px + env(safe-area-inset-top,0px));
+    left:50%;
+    transform:translate(-50%,-140%);
+    z-index:400;
+    max-width:min(92vw,460px);
+    background:var(--ink);
+    color:var(--paper);
+    padding:12px 16px;
+    border-radius:14px;
+    font-size:14px;
+    font-weight:600;
+    white-space:pre-line;
+    box-shadow:0 6px 24px rgba(0,0,0,.25);
+    transition:transform .25s ease;
+    cursor:pointer;
+  }
+  .added-toast.show{transform:translate(-50%,0);}
   .shared-list-title{
     font-size:12.5px;
     font-weight:700;
@@ -1820,6 +1839,26 @@
       </button>
       <div class="topic-body">
         <p class="settings-hint">סנכרון, ייבוא, שיתוף וניקוי של הרשימה הפעילה. בוחרים איזו רשימה פעילה בלשונית "קניות".</p>
+
+        <div class="settings-subtitle">הודעות כשבן משפחה מוסיף פריט</div>
+        <p class="settings-hint">כשמישהו מוסיף פריט לרשימה המשותפת, תופיע הודעה בראש המסך (כשהאפליקציה פתוחה). אפשר להוסיף גם התראת מערכת כשהאפליקציה פתוחה ברקע — היא לא תגיע אם האפליקציה סגורה לגמרי.</p>
+        <div class="add-row" style="margin-bottom:8px;">
+          <input type="text" id="displayNameInput" placeholder="השם שיוצג לבני המשפחה">
+          <button id="displayNameSaveBtn">שמרו</button>
+        </div>
+        <label class="clearcat-item" style="margin-bottom:8px;">
+          <input type="checkbox" id="addedNotifyToggle"> התראת מערכת כשהאפליקציה ברקע (במכשיר הזה)
+        </label>
+        <div class="cam-status" id="addedNotifyStatus" style="margin-bottom:16px;"></div>
+
+        <div class="settings-subtitle">התראות דחיפה — גם כשהאפליקציה סגורה</div>
+        <p class="settings-hint">מופיעה התראה בטלפון כשבן משפחה מוסיף פריט, גם כשהאפליקציה סגורה לגמרי. מפעילים בכל מכשיר בנפרד. באייפון זה עובד רק אם האפליקציה מותקנת על מסך הבית.</p>
+        <label class="clearcat-item" style="margin-bottom:8px;">
+          <input type="checkbox" id="pushToggle"> הפעילו התראות דחיפה במכשיר הזה
+        </label>
+        <div class="cam-status" id="pushStatus"></div>
+        <button type="button" class="import-btn secondary" id="pushTestBtn" style="margin-bottom:18px;">שלחו התראת בדיקה</button>
+
         <div id="shoppingManageBox"></div>
       </div>
     </div>
@@ -2585,7 +2624,9 @@ function subscribeShoppingRealtime(rowId){
       if(!newRow) return;
       if(newRow.updated_at && lastShoppingUpdatedAt && newRow.updated_at <= lastShoppingUpdatedAt) return;
       lastShoppingUpdatedAt = newRow.updated_at || lastShoppingUpdatedAt;
+      const listsBefore = shoppingLists;
       shoppingLists = (newRow.payload && Object.keys(newRow.payload).length) ? newRow.payload : shoppingLists;
+      noticeAddedByOthers(listsBefore, shoppingLists);
       if(!shoppingLists[activeListId]) activeListId = Object.keys(shoppingLists)[0];
       localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
       localStorage.setItem('active_shopping_list', activeListId);
@@ -2685,26 +2726,34 @@ async function loadAccountData(){
   }
   if(appliedKey && foundHouseholdRow) localStorage.setItem(appliedKey, '1');
   renderAll();
+  refreshPushRegistration();
 }
 async function pushShoppingRow(){
   if(!currentUser || !activeShoppingRowId || !sbClient) return;
   const stamp = new Date().toISOString();
   lastShoppingUpdatedAt = stamp; // claim this moment now, so an out-of-order older echo can't win
+  shoppingPushPending = false;
+  clearTimeout(shoppingPushTimer);
   try{
     await sbClient.from('user_data').update({payload: shoppingLists, updated_at: stamp}).eq('id', activeShoppingRowId);
   }catch(e){ /* offline — local copy is already saved */ }
 }
 let shoppingPushTimer = null;
+let shoppingPushPending = false;   // local edits not yet sent — a refresh must not overwrite them
 function scheduleShoppingPush(){
   if(!currentUser || !activeShoppingRowId) return;
+  shoppingPushPending = true;
   clearTimeout(shoppingPushTimer);
   shoppingPushTimer = setTimeout(pushShoppingRow, 500);
 }
 async function refreshShoppingRowFromAccount(){
   if(!currentUser || !activeShoppingRowId || !sbClient) return;
+  if(shoppingPushPending){ pushShoppingRow(); return; }   // send our unsent edits first; never overwrite them with an older server copy
   try{
     const { data, error } = await sbClient.from('user_data').select('*').eq('id', activeShoppingRowId).single();
     if(error || !data) return;
+    if(shoppingPushPending) return;                       // an edit happened while we were fetching
+    if(data.updated_at && lastShoppingUpdatedAt && data.updated_at < lastShoppingUpdatedAt) return;   // server copy is older than what we hold
     applyShoppingRow(data);
     renderShoppingPanel();
     renderTabBadges();
@@ -2904,6 +2953,7 @@ async function renderSharedList(containerId, rowId, force){
   paintSharedList(containerId, rowId);
 }
 async function doLogout(){
+  try{ await disablePush(); }catch(e){}
   await sbClient.auth.signOut();
   subscribeShoppingRealtime(null);
   currentUser = null;
@@ -3144,8 +3194,22 @@ function renderAutocomplete(containerId, query, onPick, listItems){
 function saveFridge(){ localStorage.setItem('fridge_items', JSON.stringify([...fridge])); scheduleAppStatePush(); }
 function saveCooked(){ localStorage.setItem('cooked_recipes', JSON.stringify([...cookedSet])); scheduleAppStatePush(); }
 function saveCookHistory(){ localStorage.setItem('cook_history', JSON.stringify(cookHistory)); scheduleAppStatePush(); }
+function myDisplayName(){
+  if(!currentUser) return '';
+  const meta = currentUser.user_metadata || {};
+  return (meta.display_name || (currentUser.email||'').split('@')[0] || '').trim();
+}
 function saveShoppingList(){
-  getActiveList().items = [...shoppingList];
+  const list = getActiveList();
+  if(currentUser){
+    const prev = new Set(list.items || []);
+    if(!list.addedBy) list.addedBy = {};
+    shoppingList.forEach(item=>{
+      if(!prev.has(item)) list.addedBy[item] = { n: myDisplayName(), e: currentUser.email };
+    });
+    Object.keys(list.addedBy).forEach(k=>{ if(!shoppingList.has(k)) delete list.addedBy[k]; });
+  }
+  list.items = [...shoppingList];
   localStorage.setItem('shopping_lists', JSON.stringify(shoppingLists));
   pushSync();
   scheduleShoppingPush();
@@ -5800,6 +5864,189 @@ initAccount();
   }
 })();
 
+
+
+// ---- "Someone added an item" notices ----
+// Items carry an optional author (list.addedBy[item] = {n: display name, e: email}). When a realtime update brings
+// items we did not have, from someone other than us, show a toast (app open) or a system notification (app in background,
+// if the user enabled it on this device). Works only while the app/browser is alive — true push when closed needs a server.
+let addedNoticeBuffer = {};
+let addedNoticeTimer = null;
+function noticeAddedByOthers(oldLists, newLists){
+  if(!currentUser) return;
+  Object.keys(newLists || {}).forEach(id=>{
+    const nl = newLists[id] || {};
+    const ol = (oldLists || {})[id];
+    const oldItems = new Set((ol && ol.items) || []);
+    (nl.items || []).forEach(item=>{
+      if(oldItems.has(item)) return;
+      const a = (nl.addedBy || {})[item];
+      if(a && a.e === currentUser.email) return;      // our own change coming back
+      const who = a ? (a.n || (a.e||'').split('@')[0] || 'מישהו') : 'מישהו';
+      (addedNoticeBuffer[who] = addedNoticeBuffer[who] || []).push(item);
+    });
+  });
+  if(Object.keys(addedNoticeBuffer).length){
+    clearTimeout(addedNoticeTimer);
+    addedNoticeTimer = setTimeout(flushAddedNotices, 1200);   // merge bursts into one message
+  }
+}
+function flushAddedNotices(){
+  const buf = addedNoticeBuffer; addedNoticeBuffer = {};
+  const lines = Object.entries(buf).map(([who, items])=>`נוסף לרשימה על ידי ${who}: ${[...new Set(items)].slice(0,6).join(', ')}${items.length>6?' ועוד…':''}`);
+  if(!lines.length) return;
+  if(document.visibilityState === 'visible'){
+    showAddedToast(lines.join('\n'));
+  } else if(localStorage.getItem('push_enabled') !== '1' && localStorage.getItem('added_notify_system') === '1' && 'Notification' in window && Notification.permission === 'granted'){
+    showSystemNotification('רשימת הקניות עודכנה', lines.join('\n'));
+  }
+}
+function showAddedToast(text){
+  let el = document.getElementById('addedToast');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'addedToast';
+    el.className = 'added-toast';
+    el.setAttribute('role', 'status');
+    el.onclick = ()=>{ el.classList.remove('show'); switchTab('shopping'); };
+    document.body.appendChild(el);
+  }
+  el.textContent = text;
+  el.classList.add('show');
+  clearTimeout(showAddedToast._t);
+  showAddedToast._t = setTimeout(()=>el.classList.remove('show'), 6000);
+}
+function wireAddedNoticeSettings(){
+  const nameInput = document.getElementById('displayNameInput');
+  const saveBtn = document.getElementById('displayNameSaveBtn');
+  const sysCb = document.getElementById('addedNotifyToggle');
+  const status = document.getElementById('addedNotifyStatus');
+  if(!nameInput) return;
+  if(currentUser) nameInput.value = (currentUser.user_metadata && currentUser.user_metadata.display_name) || '';
+  nameInput.placeholder = currentUser ? (currentUser.email||'').split('@')[0] : 'התחברו כדי להגדיר שם';
+  saveBtn.onclick = async ()=>{
+    if(!currentUser || !sbClient){ status.textContent = 'התחברו קודם לחשבון.'; return; }
+    const name = norm(nameInput.value);
+    try{
+      const { data, error } = await sbClient.auth.updateUser({ data: { display_name: name } });
+      if(error) throw error;
+      if(data && data.user) currentUser = data.user;
+      status.textContent = name ? `✓ בני המשפחה יראו אותך כ"${name}"` : '✓ השם נמחק — יוצג חלק מהאימייל';
+    }catch(e){ status.textContent = 'לא ניתן לשמור כרגע.'; }
+  };
+  const supported = 'Notification' in window;
+  sysCb.checked = localStorage.getItem('added_notify_system') === '1' && supported && Notification.permission === 'granted';
+  sysCb.onchange = async ()=>{
+    if(!supported){ sysCb.checked = false; status.textContent = 'הדפדפן הזה לא תומך בהתראות.'; return; }
+    if(sysCb.checked){
+      let perm = Notification.permission;
+      if(perm === 'default') perm = await Notification.requestPermission();
+      if(perm !== 'granted'){ sysCb.checked = false; status.textContent = 'לא אושרה הרשאה להתראות.'; return; }
+      localStorage.setItem('added_notify_system', '1');
+      status.textContent = '✓ תקבלו התראת מערכת כשהאפליקציה פתוחה ברקע';
+    } else {
+      localStorage.setItem('added_notify_system', '0');
+      status.textContent = 'התראות המערכת כובו (הודעה בתוך האפליקציה תמשיך להופיע).';
+    }
+  };
+}
+wireAddedNoticeSettings();
+
+
+// ---- Web Push (works with the notify-shopping Edge Function; see push_setup.sql) ----
+function urlB64ToUint8Array(b64){
+  const pad = '='.repeat((4 - b64.length % 4) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(raw, c => c.charCodeAt(0));
+}
+function uint8ToB64Url(buf){
+  return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function pushSupported(){ return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
+async function getPushRegistration(){
+  return Promise.race([navigator.serviceWorker.ready, new Promise(r=>setTimeout(()=>r(null), 4000))]);
+}
+function pushRegisterArgs(sub){
+  const j = sub.toJSON();
+  return { p_endpoint: sub.endpoint, p_p256dh: j.keys && j.keys.p256dh, p_auth: j.keys && j.keys.auth, p_user_agent: navigator.userAgent };
+}
+function pushServerErrorText(error){
+  const status = error && error.context && error.context.status;
+  if(status === 404) return 'פונקציית השרת עוד לא הוקמה ב-Supabase (ראו הוראות ההקמה).';
+  if(status === 401) return 'צריך להתחבר מחדש לחשבון.';
+  if(status === 500) return 'השרת לא מוכן — ודאו שהרצתם את push_setup.sql.';
+  return 'לא ניתן להגיע לשרת ההתראות כרגע.';
+}
+async function enablePush(setStatus){
+  if(!pushSupported()){ setStatus('הדפדפן הזה לא תומך בהתראות דחיפה.'); return false; }
+  if(!currentUser || !sbClient){ setStatus('התחברו קודם לחשבון.'); return false; }
+  let perm = Notification.permission;
+  if(perm === 'default') perm = await Notification.requestPermission();
+  if(perm !== 'granted'){ setStatus('לא אושרה הרשאה להתראות.'); return false; }
+  const reg = await getPushRegistration();
+  if(!reg){ setStatus('האפליקציה עוד לא מוכנה להתראות — פתחו אותה דרך הכתובת הרגילה ונסו שוב.'); return false; }
+  const { data, error } = await sbClient.functions.invoke('notify-shopping', { body: { action: 'key' } });
+  if(error || !data || !data.publicKey){ setStatus(pushServerErrorText(error)); return false; }
+  let sub = await reg.pushManager.getSubscription();
+  if(sub && sub.options && sub.options.applicationServerKey && uint8ToB64Url(sub.options.applicationServerKey) !== data.publicKey){
+    await sub.unsubscribe(); sub = null;     // keys changed on the server — start fresh
+  }
+  if(!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8Array(data.publicKey) });
+  const { data: r, error: e2 } = await sbClient.rpc('register_push_subscription', pushRegisterArgs(sub));
+  if(e2 || r !== 'ok'){ setStatus('לא הצלחנו לשמור את ההרשמה בשרת.'); return false; }
+  localStorage.setItem('push_enabled', '1');
+  return true;
+}
+async function disablePush(){
+  localStorage.setItem('push_enabled', '0');
+  try{
+    const reg = await getPushRegistration();
+    const sub = reg && await reg.pushManager.getSubscription();
+    if(sub){
+      if(currentUser && sbClient) await sbClient.rpc('unregister_push_subscription', { p_endpoint: sub.endpoint });
+      await sub.unsubscribe();
+    }
+  }catch(e){}
+}
+// Keeps this device's registration pointing at the signed-in user (and notices if the browser dropped it).
+async function refreshPushRegistration(){
+  if(localStorage.getItem('push_enabled') !== '1' || !pushSupported() || !currentUser || !sbClient) return;
+  if(Notification.permission !== 'granted'){ localStorage.setItem('push_enabled', '0'); return; }
+  try{
+    const reg = await getPushRegistration();
+    const sub = reg && await reg.pushManager.getSubscription();
+    if(sub) await sbClient.rpc('register_push_subscription', pushRegisterArgs(sub));
+    else localStorage.setItem('push_enabled', '0');
+  }catch(e){}
+}
+function wirePushSettings(){
+  const cb = document.getElementById('pushToggle');
+  const status = document.getElementById('pushStatus');
+  const testBtn = document.getElementById('pushTestBtn');
+  if(!cb) return;
+  const setStatus = (t)=>{ status.textContent = t; };
+  cb.checked = localStorage.getItem('push_enabled') === '1' && pushSupported() && Notification.permission === 'granted';
+  if(!pushSupported()) setStatus('הדפדפן הזה לא תומך בהתראות דחיפה.');
+  cb.onchange = async ()=>{
+    if(cb.checked){
+      setStatus('מפעילים...');
+      const ok = await enablePush(setStatus);
+      if(ok) setStatus('✓ התראות דחיפה פעילות במכשיר הזה');
+      else cb.checked = false;
+    } else {
+      await disablePush();
+      setStatus('התראות הדחיפה כובו במכשיר הזה.');
+    }
+  };
+  testBtn.onclick = async ()=>{
+    if(localStorage.getItem('push_enabled') !== '1'){ setStatus('קודם הפעילו התראות דחיפה.'); return; }
+    setStatus('שולחים...');
+    const { data, error } = await sbClient.functions.invoke('notify-shopping', { body: { action: 'test' } });
+    if(error){ setStatus(pushServerErrorText(error)); return; }
+    setStatus(data && data.devices ? `✓ נשלחה התראה ל-${data.sent} מתוך ${data.devices} מכשירים — אמורה להגיע בעוד רגע` : 'אין מכשיר רשום לחשבון הזה — כבו והפעילו מחדש.');
+  };
+}
+wirePushSettings();
 
 // ---- Expiry reminders (per-device; fires when the app is opened/returned to, at most once a day) ----
 let expiryNotifyEnabled = localStorage.getItem('expiry_notify_enabled') === '1';
