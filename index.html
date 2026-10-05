@@ -1241,6 +1241,49 @@
     cursor:pointer;
     font-family:'Assistant',sans-serif;
   }
+  .week-shop-overlay{
+    position:fixed; inset:0; z-index:300;
+    background:rgba(0,0,0,.45);
+    display:flex; align-items:flex-end; justify-content:center;
+  }
+  .week-shop-box{
+    background:var(--surface);
+    width:100%; max-width:560px; max-height:88vh;
+    border-radius:18px 18px 0 0;
+    display:flex; flex-direction:column;
+    overflow:hidden;
+  }
+  .wsp-head{padding:16px 18px 8px;}
+  .wsp-head h3{margin:0; font-family:'Frank Ruhl Libre',serif; font-size:20px;}
+  .wsp-sub{font-size:12.5px; color:var(--ink-soft); margin-top:4px;}
+  .wsp-body{padding:4px 18px 8px; overflow-y:auto; flex:1;}
+  .wsp-group-title{font-weight:700; font-size:13px; margin:12px 0 4px; color:var(--ink);}
+  .wsp-row{display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); cursor:pointer;}
+  .wsp-row input{width:20px; height:20px; flex-shrink:0; accent-color:var(--herb);}
+  .wsp-icon{font-size:20px; flex-shrink:0;}
+  .wsp-main{display:flex; flex-direction:column; min-width:0;}
+  .wsp-name{font-size:14.5px; font-weight:600;}
+  .wsp-qty{font-size:12px; font-weight:400; color:var(--ink-soft);}
+  .wsp-recipes{font-size:11.5px; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .wsp-note{font-size:11.5px; font-weight:400; color:var(--ink-soft);}
+  .wsp-inlist{opacity:.6;}
+  .wsp-foot{display:flex; gap:8px; padding:12px 18px calc(12px + env(safe-area-inset-bottom,0px)); border-top:1px solid var(--line);}
+  .wsp-add{flex:1; border:none; background:var(--brick); color:#fff; padding:12px; border-radius:12px; font-size:15px; font-weight:700; cursor:pointer; font-family:'Assistant',sans-serif;}
+  .wsp-add:disabled{opacity:.4; cursor:default;}
+  .wsp-sec{border:1px solid var(--line); background:none; color:var(--ink); padding:12px 14px; border-radius:12px; font-size:13.5px; cursor:pointer; font-family:'Assistant',sans-serif;}
+  .household-card{
+    background:var(--herb-soft);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px;
+    margin:12px 0;
+  }
+  .household-title{font-family:'Frank Ruhl Libre',serif; font-weight:700; font-size:17px;}
+  .household-members{margin-top:8px;}
+  .household-member{display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--line); font-size:13px;}
+  .household-member:last-child{border-bottom:none;}
+  .household-member > span:first-child{flex:1; word-break:break-all;}
+  .household-role{font-size:11.5px; color:var(--herb); font-weight:700;}
   .shared-list-title{
     font-size:12.5px;
     font-weight:700;
@@ -1261,6 +1304,22 @@
     border-bottom:1px solid var(--line);
     text-align:right;
     word-break:break-all;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+  }
+  .unshare-btn{
+    flex-shrink:0;
+    border:none;
+    background:var(--brick-soft);
+    color:var(--brick);
+    width:26px; height:26px;
+    border-radius:50%;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+    line-height:1;
   }
   .shared-list-row:last-child{border-bottom:none;}
   .shared-list-note{
@@ -1777,6 +1836,14 @@
         <h2>ניהול מלאי</h2><span class="topic-arrow">▾</span>
       </button>
       <div class="topic-body">
+        <div class="settings-subtitle">תזכורות על פריטים שעומדים לפוג</div>
+        <p class="settings-hint">מקבלים התראה במכשיר הזה פעם ביום, כשפותחים את האפליקציה, אם יש פריט במקרר שפג תוקפו או עומד לפוג בתוך יומיים. ההתראות נשמרות בכל מכשיר בנפרד.</p>
+        <label class="clearcat-item" style="margin-bottom:8px;">
+          <input type="checkbox" id="expiryNotifyToggle"> הפעילו תזכורות במכשיר הזה
+        </label>
+        <div class="cam-status" id="expiryNotifyStatus"></div>
+        <button type="button" class="import-btn secondary" id="expiryNotifyTestBtn" style="margin-bottom:18px;">שלחו התראת בדיקה</button>
+
         <div class="settings-subtitle">איפוס יומי של המקרר</div>
         <p class="settings-hint">כשמופעל, קטגוריות שאינן מוגנות יתאפסו אוטומטית פעם ביום (בפעם הראשונה שפותחים את האפליקציה באותו יום).</p>
         <label class="clearcat-item" style="margin-bottom:12px;">
@@ -2527,58 +2594,73 @@ function applyRecipesRow(row){
   localStorage.setItem('custom_recipes', JSON.stringify(customRecipes));
   RECIPES.push(...customRecipes);
 }
+// ---- Household ("משק בית") ----
+// A household is a group of users that share ALL four data rows (shopping, recipes, fridge/app state, categories)
+// through one invitation. Household rows are ordinary user_data rows with household_id set.
+let householdSupported = null;   // null = unknown, false = SQL migration not applied yet
+let myHousehold = null;          // {id, name, role}
+let householdMembers = [];       // [{user_id, email, role}]
+const HOUSEHOLD_KINDS = ['shopping_lists','custom_recipes','app_state','category_settings'];
+function rowLabel(r){
+  if(myHousehold && r.household_id && r.household_id === myHousehold.id) return 'משק הבית';
+  return r.owner_id === currentUser.id ? 'שלי' : r.owner_email;
+}
+async function loadHousehold(){
+  myHousehold = null; householdMembers = [];
+  if(!sbClient || !currentUser){ return; }
+  try{
+    const { data: mem, error } = await sbClient.from('household_members').select('household_id, role').eq('user_id', currentUser.id).maybeSingle();
+    if(error){
+      if(/relation|does not exist|schema cache|PGRST205|42P01/i.test((error.message||'') + (error.code||''))) householdSupported = false;
+      return;
+    }
+    householdSupported = true;
+    if(!mem) return;
+    const { data: h } = await sbClient.from('households').select('id, name').eq('id', mem.household_id).maybeSingle();
+    myHousehold = { id: mem.household_id, role: mem.role, name: (h && h.name) || 'משק הבית' };
+    const { data: members } = await sbClient.rpc('get_household_members', { hid: myHousehold.id });
+    householdMembers = members || [];
+  }catch(e){ /* offline or not available — keep personal mode */ }
+}
+function householdMissingKinds(){
+  if(!myHousehold) return [];
+  const byKind = { shopping_lists: accountShoppingRows, custom_recipes: accountRecipeRows, app_state: accountStateRows, category_settings: accountCategorySettingsRows };
+  return HOUSEHOLD_KINDS.filter(k => !(byKind[k]||[]).some(r => r.household_id === myHousehold.id));
+}
+
 async function loadAccountData(){
-  accountShoppingRows = await fetchUserDataRows('shopping_lists');
-  let mine = accountShoppingRows.find(r=>r.owner_id === currentUser.id);
-  if(!mine){
-    const { data } = await sbClient.from('user_data').insert({
-      owner_id: currentUser.id, owner_email: currentUser.email, kind:'shopping_lists', payload: shoppingLists
-    }).select().single();
-    if(data){ mine = data; accountShoppingRows.push(mine); }
-  }
-  if(mine){
-    const activeId = (activeShoppingRowId && accountShoppingRows.find(r=>r.id===activeShoppingRowId)) ? activeShoppingRowId : mine.id;
-    applyShoppingRow(accountShoppingRows.find(r=>r.id===activeId));
-  }
+  await loadHousehold();
+  const hid = myHousehold ? myHousehold.id : null;
+  const appliedKey = hid ? 'household_applied_' + hid : null;
+  let foundHouseholdRow = false;
 
-  accountRecipeRows = await fetchUserDataRows('custom_recipes');
-  let rmine = accountRecipeRows.find(r=>r.owner_id === currentUser.id);
-  if(!rmine){
-    const { data } = await sbClient.from('user_data').insert({
-      owner_id: currentUser.id, owner_email: currentUser.email, kind:'custom_recipes', payload: customRecipes
-    }).select().single();
-    if(data){ rmine = data; accountRecipeRows.push(rmine); }
+  const cfgs = [
+    { kind:'shopping_lists',    set:(r)=>{ accountShoppingRows = r; },          rows:()=>accountShoppingRows,          active:()=>activeShoppingRowId,          payload:()=>shoppingLists,           apply:applyShoppingRow },
+    { kind:'custom_recipes',    set:(r)=>{ accountRecipeRows = r; },            rows:()=>accountRecipeRows,            active:()=>activeRecipesRowId,           payload:()=>customRecipes,           apply:applyRecipesRow },
+    { kind:'app_state',         set:(r)=>{ accountStateRows = r; },             rows:()=>accountStateRows,             active:()=>activeStateRowId,             payload:()=>collectAppState(),       apply:applyAppStateRow },
+    { kind:'category_settings', set:(r)=>{ accountCategorySettingsRows = r; },  rows:()=>accountCategorySettingsRows,  active:()=>activeCategorySettingsRowId, payload:()=>collectCategorySettings(), apply:applyCategorySettingsRow }
+  ];
+  for(const cfg of cfgs){
+    cfg.set(await fetchUserDataRows(cfg.kind));
+    const rows = cfg.rows();
+    const own = rows.filter(r=>r.owner_id === currentUser.id);
+    let mine = own.find(r=>!r.household_id) || own[0];
+    const hrow = hid ? rows.find(r=>r.household_id === hid) : null;
+    if(!mine && !hrow){
+      const { data } = await sbClient.from('user_data').insert({
+        owner_id: currentUser.id, owner_email: currentUser.email, kind: cfg.kind, payload: cfg.payload()
+      }).select().single();
+      if(data){ mine = data; rows.push(mine); }
+    }
+    let pick = null;
+    if(hrow){ foundHouseholdRow = true; }
+    const stored = cfg.active();
+    if(hrow && localStorage.getItem(appliedKey) !== '1') pick = hrow;                 // first time in a household: switch to its data
+    else if(stored && rows.find(r=>r.id === stored)) pick = rows.find(r=>r.id === stored);
+    else pick = hrow || mine;
+    if(pick) cfg.apply(pick);
   }
-  if(rmine){
-    const ractiveId = (activeRecipesRowId && accountRecipeRows.find(r=>r.id===activeRecipesRowId)) ? activeRecipesRowId : rmine.id;
-    applyRecipesRow(accountRecipeRows.find(r=>r.id===ractiveId));
-  }
-
-  accountStateRows = await fetchUserDataRows('app_state');
-  let smine = accountStateRows.find(r=>r.owner_id === currentUser.id);
-  if(!smine){
-    const { data } = await sbClient.from('user_data').insert({
-      owner_id: currentUser.id, owner_email: currentUser.email, kind:'app_state', payload: collectAppState()
-    }).select().single();
-    if(data){ smine = data; accountStateRows.push(smine); }
-  }
-  if(smine){
-    const sactiveId = (activeStateRowId && accountStateRows.find(r=>r.id===activeStateRowId)) ? activeStateRowId : smine.id;
-    applyAppStateRow(accountStateRows.find(r=>r.id===sactiveId));
-  }
-
-  accountCategorySettingsRows = await fetchUserDataRows('category_settings');
-  let cmine = accountCategorySettingsRows.find(r=>r.owner_id === currentUser.id);
-  if(!cmine){
-    const { data } = await sbClient.from('user_data').insert({
-      owner_id: currentUser.id, owner_email: currentUser.email, kind:'category_settings', payload: collectCategorySettings()
-    }).select().single();
-    if(data){ cmine = data; accountCategorySettingsRows.push(cmine); }
-  }
-  if(cmine){
-    const cactiveId = (activeCategorySettingsRowId && accountCategorySettingsRows.find(r=>r.id===activeCategorySettingsRowId)) ? activeCategorySettingsRowId : cmine.id;
-    applyCategorySettingsRow(accountCategorySettingsRows.find(r=>r.id===cactiveId));
-  }
+  if(appliedKey && foundHouseholdRow) localStorage.setItem(appliedKey, '1');
   renderAll();
 }
 async function pushShoppingRow(){
@@ -2611,6 +2693,126 @@ async function pushRecipesRow(){
     await sbClient.from('user_data').update({payload: customRecipes, updated_at: new Date().toISOString()}).eq('id', activeRecipesRowId);
   }catch(e){ /* offline — local copy is already saved */ }
 }
+
+function householdErrorText(code){
+  const map = {
+    'user not found': 'המשתמש/ת לא רשום/ה באפליקציה — צריך קודם להירשם (עם אותו אימייל).',
+    'already a member': 'כבר חבר/ה במשק הבית.',
+    'user is in another household': 'כבר שייך/ת למשק בית אחר.',
+    'not an admin': 'רק מנהל/ת משק הבית יכול/ה לעשות את זה.',
+    'not a member': 'המשתמש/ת לא חבר/ה במשק הבית.',
+    'admin cannot leave while other members remain': 'מנהל/ת משק הבית לא יכול/ה לעזוב כל עוד יש חברים נוספים — קודם מסירים אותם.',
+    'already in a household': 'אתם כבר חלק ממשק בית.'
+  };
+  return map[code] || code;
+}
+async function householdMoveMyData(){
+  const { error } = await sbClient.rpc('move_my_rows_to_household', { hid: myHousehold.id });
+  if(error) throw error;
+  const specs = [['shopping_lists',()=>shoppingLists],['custom_recipes',()=>customRecipes],['app_state',collectAppState],['category_settings',collectCategorySettings]];
+  for(const [kind, payloadFn] of specs){
+    const rows = await fetchUserDataRows(kind);
+    if(!rows.some(r=>r.household_id === myHousehold.id)){
+      await sbClient.from('user_data').insert({ owner_id: currentUser.id, owner_email: currentUser.email, kind, payload: payloadFn(), household_id: myHousehold.id });
+    }
+  }
+  localStorage.removeItem('household_applied_' + myHousehold.id);
+  await loadAccountData();
+}
+function renderHouseholdBox(){
+  const el = document.getElementById('householdBox');
+  if(!el) return;
+  if(householdSupported === false){
+    el.innerHTML = `<div class="household-card"><div class="household-title">משק בית</div>
+      <p class="settings-hint" style="margin:6px 0 0;">התכונה הזו דורשת עדכון חד-פעמי של בסיס הנתונים (SQL). עד אז אפשר להשתמש בשיתוף הנפרד שמתחת.</p></div>`;
+    return;
+  }
+  if(householdSupported === null){ el.innerHTML = ''; return; }
+  if(!myHousehold){
+    el.innerHTML = `
+      <div class="household-card">
+        <div class="household-title">משק בית</div>
+        <p class="settings-hint" style="margin:6px 0 10px;">שיתוף אחד לכל המידע — רשימות קניות, מתכונים, מקרר וסיווגים — עם בני המשפחה, בלי לשתף ארבע פעמים בנפרד. המידע שלכם עובר למשק הבית ולא נמחק.</p>
+        <div class="add-row">
+          <input type="text" id="householdNameInput" placeholder="שם משק הבית (למשל: משפחת שחף)">
+          <button id="householdCreateBtn">צרו</button>
+        </div>
+        <div class="cam-status" id="householdStatus"></div>
+      </div>`;
+    document.getElementById('householdCreateBtn').onclick = async ()=>{
+      const status = document.getElementById('householdStatus');
+      status.textContent = 'יוצרים...';
+      try{
+        const { error } = await sbClient.rpc('create_household', { h_name: norm(document.getElementById('householdNameInput').value) });
+        if(error) throw error;
+        await loadHousehold();
+        await householdMoveMyData();
+        renderAccountBox();
+      }catch(e){ status.textContent = 'שגיאה: ' + householdErrorText(e.message||''); }
+    };
+    return;
+  }
+  const isAdmin = myHousehold.role === 'admin';
+  const missing = householdMissingKinds();
+  el.innerHTML = `
+    <div class="household-card">
+      <div class="household-title">משק בית: ${myHousehold.name}</div>
+      <div class="household-members">
+        ${householdMembers.map(m=>`
+          <div class="household-member">
+            <span dir="ltr">${m.email}</span>
+            <span class="household-role">${m.role==='admin'?'מנהל/ת':''}</span>
+            ${(isAdmin && m.user_id !== currentUser.id) || (m.user_id === currentUser.id && !(isAdmin && householdMembers.length>1))
+              ? `<button type="button" class="unshare-btn household-remove" data-email="${m.email}" data-self="${m.user_id===currentUser.id?'1':''}" aria-label="${m.user_id===currentUser.id?'עזיבת משק הבית':'הסרה ממשק הבית'}">×</button>` : ''}
+          </div>`).join('')}
+      </div>
+      ${isAdmin ? `
+        <div class="add-row" style="margin-top:10px;">
+          <input type="email" id="householdInviteEmail" placeholder="אימייל של בן/בת משפחה (רשום/ה באפליקציה)">
+          <button id="householdInviteBtn">הזמינו</button>
+        </div>` : ''}
+      ${missing.length && isAdmin ? `
+        <button type="button" class="import-btn secondary" id="householdMoveBtn" style="margin-top:10px;">העבירו את המידע שלי למשק הבית</button>` : ''}
+      <div class="cam-status" id="householdStatus"></div>
+    </div>`;
+  const status = document.getElementById('householdStatus');
+  const inviteBtn = document.getElementById('householdInviteBtn');
+  if(inviteBtn) inviteBtn.onclick = async ()=>{
+    const email = norm(document.getElementById('householdInviteEmail').value);
+    if(!email) return;
+    status.textContent = 'מזמינים...';
+    try{
+      const { data, error } = await sbClient.rpc('invite_to_household', { hid: myHousehold.id, target_email: email });
+      if(error) throw error;
+      if(data !== 'ok'){ status.textContent = householdErrorText(data); return; }
+      await loadHousehold();
+      renderAccountBox();
+      const st = document.getElementById('householdStatus'); if(st) st.textContent = '✓ נוסף/ה למשק הבית — בכניסה הבאה יראו את המידע המשותף';
+    }catch(e){ status.textContent = 'שגיאה: ' + householdErrorText(e.message||''); }
+  };
+  const moveBtn = document.getElementById('householdMoveBtn');
+  if(moveBtn) moveBtn.onclick = async ()=>{
+    status.textContent = 'מעבירים...';
+    try{ await householdMoveMyData(); renderAccountBox(); }
+    catch(e){ status.textContent = 'שגיאה: ' + householdErrorText(e.message||''); }
+  };
+  el.querySelectorAll('.household-remove').forEach(btn=>{
+    btn.onclick = ()=>{
+      const self = btn.dataset.self === '1';
+      showConfirmModal(self ? 'לעזוב את משק הבית? המידע האישי שלכם יישאר אצלכם.' : `להסיר את ${btn.dataset.email} ממשק הבית?`, async ()=>{
+        try{
+          const { data, error } = await sbClient.rpc('remove_from_household', { hid: myHousehold.id, target_email: btn.dataset.email });
+          if(error) throw error;
+          if(data !== 'ok'){ alert(householdErrorText(data)); return; }
+          if(self){ localStorage.removeItem('household_applied_' + myHousehold.id); await loadAccountData(); }
+          else { await loadHousehold(); }
+          renderAccountBox();
+        }catch(e){ alert('שגיאה: ' + householdErrorText(e.message||'')); }
+      });
+    };
+  });
+}
+
 async function shareRow(rowId, email){
   const { data, error } = await sbClient.rpc('share_data_with_email', {row_id: rowId, target_email: email});
   if(error) throw error;
@@ -2639,7 +2841,27 @@ function paintSharedList(containerId, rowId){
   if(c.emails.length===0){ el.innerHTML = '<div class="shared-list-note">עדיין לא שיתפתם עם אף אחד.</div>'; return; }
   el.innerHTML = `
     <div class="shared-list-title">משותף עם (${c.emails.length}):</div>
-    <div class="shared-list">${c.emails.map(e=>`<div class="shared-list-row" dir="ltr">${e}</div>`).join('')}</div>`;
+    <div class="shared-list">${c.emails.map(e=>`
+      <div class="shared-list-row">
+        <span dir="ltr">${e}</span>
+        <button type="button" class="unshare-btn" data-email="${e}" aria-label="ביטול שיתוף עם ${e}">×</button>
+      </div>`).join('')}</div>`;
+  el.querySelectorAll('.unshare-btn').forEach(btn=>{
+    btn.onclick = ()=>{
+      const email = btn.dataset.email;
+      showConfirmModal(`לבטל את השיתוף עם ${email}? הוא/היא לא יראו יותר את המידע הזה.`, async ()=>{
+        try{
+          const { data, error } = await sbClient.rpc('unshare_data_with_email', {row_id: rowId, target_email: email});
+          if(error) throw error;
+          if(data !== 'ok') throw new Error(data);
+        }catch(e){
+          alert('ביטול השיתוף נכשל: ' + (e.message || '') + '\n(ודאו שהרצתם את ה-SQL החדש ב-Supabase)');
+          return;
+        }
+        renderSharedList(containerId, rowId, true);
+      });
+    };
+  });
 }
 async function renderSharedList(containerId, rowId, force){
   if(!rowId || !sbClient || !currentUser) return;
@@ -2667,6 +2889,7 @@ async function doLogout(){
   activeStateRowId = null;
   activeCategorySettingsRowId = null;
   Object.keys(sharedEmailsCache).forEach(k=>delete sharedEmailsCache[k]);
+  myHousehold = null; householdMembers = [];
   localStorage.removeItem('active_shopping_row');
   localStorage.removeItem('active_recipes_row');
   localStorage.removeItem('active_state_row');
@@ -2734,21 +2957,21 @@ function renderAccountBox(){
     <div class="acct-picker">
       <div class="settings-hint" style="font-weight:700;margin-bottom:4px;">איזו רשימת קניות להציג:</div>
       <select id="shopRowPicker" class="week-select">
-        ${accountShoppingRows.map(r=>`<option value="${r.id}" ${r.id===activeShoppingRowId?'selected':''}>${r.owner_id===currentUser.id?'שלי':r.owner_email}</option>`).join('')}
+        ${accountShoppingRows.map(r=>`<option value="${r.id}" ${r.id===activeShoppingRowId?'selected':''}>${rowLabel(r)}</option>`).join('')}
       </select>
     </div>` : '';
   const recPicker = accountRecipeRows.length>1 ? `
     <div class="acct-picker">
       <div class="settings-hint" style="font-weight:700;margin-bottom:4px;">אילו מתכונים להציג:</div>
       <select id="recRowPicker" class="week-select">
-        ${accountRecipeRows.map(r=>`<option value="${r.id}" ${r.id===activeRecipesRowId?'selected':''}>${r.owner_id===currentUser.id?'שלי':r.owner_email}</option>`).join('')}
+        ${accountRecipeRows.map(r=>`<option value="${r.id}" ${r.id===activeRecipesRowId?'selected':''}>${rowLabel(r)}</option>`).join('')}
       </select>
     </div>` : '';
   const statePicker = accountStateRows.length>1 ? `
     <div class="acct-picker">
       <div class="settings-hint" style="font-weight:700;margin-bottom:4px;">איזה מקרר ונתונים נוספים להציג:</div>
       <select id="stateRowPicker" class="week-select">
-        ${accountStateRows.map(r=>`<option value="${r.id}" ${r.id===activeStateRowId?'selected':''}>${r.owner_id===currentUser.id?'שלי':r.owner_email}</option>`).join('')}
+        ${accountStateRows.map(r=>`<option value="${r.id}" ${r.id===activeStateRowId?'selected':''}>${rowLabel(r)}</option>`).join('')}
       </select>
     </div>` : '';
   el.innerHTML = `
@@ -2757,7 +2980,9 @@ function renderAccountBox(){
         <span class="sync-status">✓ מחוברים כ-<b>${currentUser.email}</b></span>
         <button id="acctLogoutBtn">התנתקות</button>
       </div>
+      <div id="householdBox"></div>
       ${shopPicker}${recPicker}${statePicker}
+      <div class="settings-hint" style="margin:14px 0 6px;font-weight:700;">שיתוף נפרד לפי סוג מידע (מתקדם)</div>
       <div class="acct-picker">
         <div class="settings-hint" style="font-weight:700;margin-bottom:4px;">שתפו את רשימות הקניות שלכם עם:</div>
         <div class="add-row">
@@ -2800,6 +3025,7 @@ function renderAccountBox(){
     const row = accountStateRows.find(r=>r.id===statePickerEl.value);
     if(row){ applyAppStateRow(row); renderAll(); }
   };
+  renderHouseholdBox();
   const status = document.getElementById('acctStatus');
   renderSharedList('sharedListShopping', activeShoppingRowId);
   renderSharedList('sharedListRecipes', activeRecipesRowId);
@@ -3927,26 +4153,7 @@ function renderWeekPlan(){
       renderWeekPlan();
     };
   });
-  document.getElementById('weekShopBtn').onclick = ()=>{
-    const chosen = Object.values(weeklyPlan).flat().filter(Boolean);
-    if(chosen.length===0){ alert('בחרו קודם מתכונים לימי השבוע'); return; }
-    let addedCount = 0;
-    chosen.forEach(name=>{
-      const r = RECIPES.find(rc=>rc.name===name);
-      if(!r) return;
-      r.ingredients.forEach(ing=>{
-        if(!fridge.has(ing) && !shoppingList.has(ing)){
-          shoppingList.add(ing);
-          boughtItems.delete(ing);
-          addedCount++;
-        }
-      });
-    });
-    saveShoppingList();
-    saveBought();
-    renderAll();
-    alert(addedCount>0 ? `נוספו ${addedCount} מצרכים לרשימת הקניות` : 'הכל כבר יש לכם או כבר ברשימה');
-  };
+  document.getElementById('weekShopBtn').onclick = openWeekShopPreview;
   document.getElementById('weekClearBtn').onclick = ()=>{
     showConfirmModal('לנקות את כל תוכנית השבוע?', ()=>{
       weeklyPlan = {};
@@ -3955,6 +4162,108 @@ function renderWeekPlan(){
       renderWeekPlan();
     });
   };
+}
+
+
+// ---- Weekly plan -> shopping list preview ----
+// Aggregates every ingredient of the planned meals, subtracts what is in the fridge, shows how many
+// planned meals need each item, lets the user untick things, then adds the rest with quantities.
+function buildWeekShopEntries(){
+  const map = new Map();
+  let meals = 0;
+  Object.values(weeklyPlan).flat().filter(Boolean).forEach(name=>{
+    const r = RECIPES.find(rc=>rc.name===name);
+    if(!r) return;
+    meals++;
+    r.ingredients.forEach(ing=>{
+      if(!map.has(ing)) map.set(ing, {ing, n:0, recipes:[]});
+      const e = map.get(ing);
+      e.n++;
+      if(!e.recipes.includes(name)) e.recipes.push(name);
+    });
+  });
+  const entries = [...map.values()].map(e=>({
+    ...e,
+    inFridge: fridge.has(e.ing),
+    inList: shoppingList.has(e.ing),
+    cat: catOf(e.ing),
+    qty: (()=>{ const base = qtyOf(e.ing); return e.n>1 ? (base ? `${base} ×${e.n}` : `×${e.n}`) : base; })()
+  }));
+  return { meals, entries };
+}
+function openWeekShopPreview(){
+  const { meals, entries } = buildWeekShopEntries();
+  if(meals===0){ alert('בחרו קודם מתכונים לימי השבוע'); return; }
+  const missing = entries.filter(e=>!e.inFridge);
+  const haveAll = entries.filter(e=>e.inFridge).map(e=>e.ing);
+  if(missing.length===0){ alert('כל המצרכים לשבוע כבר נמצאים במקרר 🎉'); return; }
+
+  const protectedSet = new Set(protectedCategories);
+  const checked = new Set(missing.filter(e=>!e.inList && !protectedSet.has(e.cat)).map(e=>e.ing));
+
+  const old = document.getElementById('weekShopOverlay');
+  if(old) old.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'weekShopOverlay';
+  overlay.className = 'week-shop-overlay';
+  document.body.appendChild(overlay);
+
+  const render = ()=>{
+    const order = allCategoryNames().concat(['אחר']);
+    const groups = {};
+    missing.forEach(e=>{ (groups[e.cat] = groups[e.cat] || []).push(e); });
+    const groupHtml = order.filter(c=>groups[c]).map(c=>`
+      <div class="wsp-group">
+        <div class="wsp-group-title">${c}${protectedSet.has(c)?' <span class="wsp-note">(מזווה — לא מסומן כברירת מחדל)</span>':''}</div>
+        ${groups[c].sort((a,b)=>a.ing.localeCompare(b.ing,'he')).map(e=>`
+          <label class="wsp-row${e.inList?' wsp-inlist':''}">
+            <input type="checkbox" data-ing="${e.ing}" ${e.inList?'disabled checked':(checked.has(e.ing)?'checked':'')}>
+            <span class="wsp-icon">${iconOf(e.ing)}</span>
+            <span class="wsp-main">
+              <span class="wsp-name">${e.ing}${e.qty?` <span class="wsp-qty">(${e.qty})</span>`:''}${e.inList?' <span class="wsp-note">✓ כבר ברשימה</span>':''}</span>
+              <span class="wsp-recipes">${e.recipes.join(' · ')}</span>
+            </span>
+          </label>`).join('')}
+      </div>`).join('');
+    const addCount = [...checked].length;
+    overlay.innerHTML = `
+      <div class="week-shop-box">
+        <div class="wsp-head">
+          <h3>רשימת קניות לשבוע</h3>
+          <div class="wsp-sub">${meals} ארוחות מתוכננות · חסרים ${missing.length} מצרכים${haveAll.length?` · ${haveAll.length} כבר במקרר`:''}</div>
+        </div>
+        <div class="wsp-body">${groupHtml}</div>
+        <div class="wsp-foot">
+          <button type="button" class="wsp-add" id="wspAdd" ${addCount?'':'disabled'}>הוסיפו ${addCount} לרשימה</button>
+          <button type="button" class="wsp-sec" id="wspAll">סמנו הכל</button>
+          <button type="button" class="wsp-sec" id="wspCancel">ביטול</button>
+        </div>
+      </div>`;
+    overlay.querySelectorAll('input[data-ing]').forEach(cb=>{
+      cb.onchange = ()=>{ if(cb.checked) checked.add(cb.dataset.ing); else checked.delete(cb.dataset.ing); const b = document.getElementById('wspAdd'); b.textContent = `הוסיפו ${checked.size} לרשימה`; b.disabled = checked.size===0; };
+    });
+    document.getElementById('wspCancel').onclick = ()=> overlay.remove();
+    document.getElementById('wspAll').onclick = ()=>{ missing.filter(e=>!e.inList).forEach(e=>checked.add(e.ing)); render(); };
+    document.getElementById('wspAdd').onclick = ()=>{
+      const list = getActiveList();
+      let added = 0;
+      missing.forEach(e=>{
+        if(!checked.has(e.ing) || e.inList) return;
+        shoppingList.add(e.ing);
+        boughtItems.delete(e.ing);
+        if(e.qty && !list.quantities[e.ing]) list.quantities[e.ing] = e.qty;
+        recordUsage(e.ing);
+        added++;
+      });
+      saveShoppingList();
+      saveBought();
+      overlay.remove();
+      renderAll();
+      switchTab('shopping');
+    };
+  };
+  overlay.onclick = (ev)=>{ if(ev.target === overlay) overlay.remove(); };
+  render();
 }
 
 function renderDailyRecipe(){
@@ -4712,7 +5021,7 @@ function renderCategorySettingsSyncBox(){
     <div class="acct-picker">
       <div class="settings-hint" style="font-weight:700;margin-bottom:4px;">אילו סיווגים להציג:</div>
       <select id="catSettingsRowPicker" class="week-select">
-        ${accountCategorySettingsRows.map(r=>`<option value="${r.id}" ${r.id===activeCategorySettingsRowId?'selected':''}>${r.owner_id===currentUser.id?'שלי':r.owner_email}</option>`).join('')}
+        ${accountCategorySettingsRows.map(r=>`<option value="${r.id}" ${r.id===activeCategorySettingsRowId?'selected':''}>${rowLabel(r)}</option>`).join('')}
       </select>
     </div>` : '';
   el.innerHTML = `
@@ -5466,6 +5775,93 @@ initAccount();
     history.replaceState(null, '', location.pathname);
   }
 })();
+
+
+// ---- Expiry reminders (per-device; fires when the app is opened/returned to, at most once a day) ----
+let expiryNotifyEnabled = localStorage.getItem('expiry_notify_enabled') === '1';
+function expiringItemsList(){
+  return Object.keys(fridgeExpiry)
+    .filter(i=>fridge.has(i))
+    .map(i=>({item:i, d:daysUntil(fridgeExpiry[i])}))
+    .filter(x=>x.d!==null && x.d<=2)
+    .sort((a,b)=>a.d-b.d);
+}
+function expiryNotificationText(items){
+  const lines = items.slice(0,6).map(x=>
+    x.d<0 ? `${x.item} — פג תוקף` : x.d===0 ? `${x.item} — היום` : x.d===1 ? `${x.item} — מחר` : `${x.item} — בעוד ${x.d} ימים`);
+  if(items.length>6) lines.push(`ועוד ${items.length-6}…`);
+  return { title: 'פריטים במקרר שעומדים לפוג', body: lines.join('\n') };
+}
+async function showSystemNotification(title, body){
+  try{
+    if('serviceWorker' in navigator){
+      const reg = await Promise.race([navigator.serviceWorker.ready, new Promise(r=>setTimeout(()=>r(null),1500))]);
+      if(reg && reg.showNotification){
+        await reg.showNotification(title, {body, icon:'icon-192.png', tag:'expiry-reminder', lang:'he', dir:'rtl'});
+        return true;
+      }
+    }
+  }catch(e){}
+  try{ new Notification(title, {body}); return true; }catch(e){}
+  return false;
+}
+async function maybeNotifyExpiring(force){
+  if(!force && !expiryNotifyEnabled) return false;
+  if(!('Notification' in window) || Notification.permission !== 'granted') return false;
+  const items = expiringItemsList();
+  const today = new Date().toISOString().slice(0,10);
+  if(!force){
+    if(items.length===0) return false;
+    if(localStorage.getItem('expiry_notified_on') === today) return false;
+  }
+  if(items.length===0){
+    return showSystemNotification('התזכורות פועלות ✓', 'כרגע אין פריטים שעומדים לפוג.');
+  }
+  const t = expiryNotificationText(items);
+  localStorage.setItem('expiry_notified_on', today);
+  return showSystemNotification(t.title, t.body);
+}
+function wireExpiryNotifySettings(){
+  const cb = document.getElementById('expiryNotifyToggle');
+  const status = document.getElementById('expiryNotifyStatus');
+  const testBtn = document.getElementById('expiryNotifyTestBtn');
+  if(!cb) return;
+  const supported = 'Notification' in window;
+  cb.checked = expiryNotifyEnabled && supported && Notification.permission === 'granted';
+  if(!supported) status.textContent = 'הדפדפן הזה לא תומך בהתראות.';
+  else if(Notification.permission === 'denied') status.textContent = 'ההתראות חסומות לאתר הזה — אפשר לאפשר אותן בהגדרות האתר בדפדפן.';
+  cb.onchange = async ()=>{
+    if(!supported){ cb.checked = false; return; }
+    if(cb.checked){
+      let perm = Notification.permission;
+      if(perm === 'default') perm = await Notification.requestPermission();
+      if(perm !== 'granted'){
+        cb.checked = false;
+        status.textContent = 'לא אושרה הרשאה להתראות.';
+        return;
+      }
+      expiryNotifyEnabled = true;
+      localStorage.setItem('expiry_notify_enabled', '1');
+      status.textContent = '✓ התזכורות הופעלו במכשיר הזה';
+      localStorage.removeItem('expiry_notified_on');
+      maybeNotifyExpiring(false);
+    } else {
+      expiryNotifyEnabled = false;
+      localStorage.setItem('expiry_notify_enabled', '0');
+      status.textContent = 'התזכורות כובו';
+    }
+  };
+  testBtn.onclick = async ()=>{
+    if(!supported || Notification.permission !== 'granted'){ status.textContent = 'קודם הפעילו תזכורות ואשרו הרשאה.'; return; }
+    const ok = await maybeNotifyExpiring(true);
+    status.textContent = ok ? '✓ נשלחה התראת בדיקה' : 'לא הצלחנו להציג התראה.';
+  };
+}
+wireExpiryNotifySettings();
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible') maybeNotifyExpiring(false);
+});
+setTimeout(()=>maybeNotifyExpiring(false), 3500);
 
 // Register the service worker for offline support and real installability.
 // Requires service-worker.js (and manifest.json + icons) to be hosted in the same folder as this file.
