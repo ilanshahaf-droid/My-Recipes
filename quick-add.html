@@ -473,6 +473,7 @@ async function renderAddScreen(user, row){
       if(!freshLists[freshKey].items) freshLists[freshKey].items = [];
       if(!freshLists[freshKey].bought) freshLists[freshKey].bought = [];
       if(!freshLists[freshKey].quantities) freshLists[freshKey].quantities = {};
+      if(!freshLists[freshKey].addedBy) freshLists[freshKey].addedBy = {};
       mutator(freshLists, freshKey);
       const { error: updateErr } = await sbClient.from('user_data').update({
         payload: freshLists,
@@ -497,7 +498,11 @@ async function renderAddScreen(user, row){
     const qty = qtyInput ? norm(qtyInput.value) : '';
     input.disabled = true;
     const ok = await mutateAndSave((freshLists, freshKey)=>{
-      if(!freshLists[freshKey].items.includes(val)) freshLists[freshKey].items.push(val);
+      if(!freshLists[freshKey].items.includes(val)){
+        freshLists[freshKey].items.push(val);
+        const meta = user.user_metadata || {};
+        freshLists[freshKey].addedBy[val] = { n: (meta.display_name || (user.email||'').split('@')[0] || '').trim(), e: user.email };
+      }
       freshLists[freshKey].bought = freshLists[freshKey].bought.filter(i=>i!==val);
       if(qty) freshLists[freshKey].quantities[val] = qty; else delete freshLists[freshKey].quantities[val];
     }, 'שומרים...');
@@ -528,6 +533,7 @@ async function renderAddScreen(user, row){
       freshLists[freshKey].items = freshLists[freshKey].items.filter(i=>i!==name);
       freshLists[freshKey].bought = freshLists[freshKey].bought.filter(i=>i!==name);
       delete freshLists[freshKey].quantities[name];
+      if(freshLists[freshKey].addedBy) delete freshLists[freshKey].addedBy[name];
     }, '');
     status.textContent = '';
   }
