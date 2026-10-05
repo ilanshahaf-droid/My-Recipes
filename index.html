@@ -22,6 +22,7 @@
     --brick:#C1442E;
     --brick-soft:#F3DCD6;
     --herb:#5B7553;
+    --on-herb:#FFFFFF;
     --herb-soft:#E3EADD;
     --mustard:#B8842A;
     --mustard-soft:#F3E6CA;
@@ -36,6 +37,7 @@
     --brick:#E06B55;
     --brick-soft:#4A2E28;
     --herb:#8FB085;
+    --on-herb:#1C2119;
     --herb-soft:#2E3A2C;
     --mustard:#D4A84A;
     --mustard-soft:#3D3420;
@@ -64,6 +66,14 @@
     z-index:10;
     padding:18px 0 12px;
     border-bottom:1px solid var(--line);
+  }
+  .header-brand{display:flex; align-items:center; gap:12px; min-width:0;}
+  .app-logo{
+    flex-shrink:0;
+    width:46px; height:46px;
+    border-radius:14px;
+    background:var(--brick);
+    display:flex; align-items:center; justify-content:center;
   }
   .header-row{
     display:flex;
@@ -266,32 +276,30 @@
 
   .cat-tabs{
     display:flex;
-    gap:6px;
+    gap:8px;
     overflow-x:auto;
-    padding:6px;
-    margin-bottom:14px;
+    padding:2px 2px 8px;
+    margin-bottom:10px;
     scrollbar-width:none;
-    background:var(--line);
-    border-radius:14px;
   }
   .cat-tabs::-webkit-scrollbar{display:none;}
   .cat-tab{
     flex:none;
-    border:none;
-    background:transparent;
-    color:var(--ink-soft);
-    padding:10px 18px;
-    border-radius:10px;
-    font-size:15px;
+    border:1px solid var(--line);
+    background:var(--surface);
+    color:var(--ink);
+    padding:9px 18px;
+    border-radius:100px;
+    font-size:14.5px;
     font-weight:700;
     cursor:pointer;
     white-space:nowrap;
     font-family:'Frank Ruhl Libre',serif;
   }
   .cat-tab.active{
-    background:var(--surface);
-    color:var(--brick);
-    box-shadow:0 1px 3px rgba(0,0,0,.1);
+    background:var(--herb);
+    border-color:var(--herb);
+    color:var(--on-herb, #fff);
   }
 
   .cat-add-row{
@@ -347,6 +355,11 @@
     font-family:'Assistant',sans-serif;
   }
   .item-btn-wrap .item-btn{border-radius:100px 0 0 100px;}
+  .item-btn[data-icon]::before{
+    content:attr(data-icon);
+    margin-inline-end:7px;
+    font-size:15px;
+  }
   .item-btn.selected{
     background:var(--herb);
     border-color:var(--herb);
@@ -1711,9 +1724,19 @@
 
   <header class="top">
     <div class="header-row">
-      <div>
-        <h1>מה יש במקרר?</h1>
-        <p>סמנו מה יש בבית, ונציע מה אפשר לבשל</p>
+      <div class="header-brand">
+        <div class="app-logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="5" y="2.5" width="14" height="19" rx="3"/>
+            <path d="M5 10.5h14"/>
+            <path d="M9 6v1.5"/>
+            <path d="M9 13.5V16"/>
+          </svg>
+        </div>
+        <div>
+          <h1>מה יש במקרר?</h1>
+          <p>סמנו מה יש בבית, ונציע מה אפשר לבשל</p>
+        </div>
       </div>
       <button class="theme-btn" id="themeBtn" title="מצב כהה/בהיר">🌙</button>
     </div>
@@ -3770,6 +3793,7 @@ function renderItemGrid(){
     const b = document.createElement('button');
     b.className = 'item-btn' + (fridge.has(item)?' selected':'');
     b.textContent = item;
+    b.dataset.icon = iconOf(item);
     b.onclick = ()=>{
       if(ranOutMode){
         if(fridge.has(item)) fridge.delete(item);
