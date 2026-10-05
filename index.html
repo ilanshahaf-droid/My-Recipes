@@ -1941,7 +1941,19 @@ function setCategoryOverride(item, cat){
 }
 
 let customCategories = JSON.parse(localStorage.getItem('custom_categories')||'[]');
-function allCategoryNames(){ return Object.keys(CATALOG).concat(customCategories); }
+function allCategoryNames(){ return [...new Set(Object.keys(CATALOG).concat(customCategories))]; }
+// Self-healing: if a category the user once added by hand later gets baked into the permanent
+// CATALOG (as happens when Claude folds a user's export into the built-in code), it would
+// otherwise linger in customCategories as a redundant duplicate — making that category's items
+// render twice everywhere. This drops any customCategories entry that CATALOG now already covers.
+function pruneCustomCategoriesAgainstCatalog(){
+  const before = customCategories.length;
+  customCategories = customCategories.filter(c=>!CATALOG[c]);
+  const changed = customCategories.length !== before;
+  if(changed) localStorage.setItem('custom_categories', JSON.stringify(customCategories));
+  return changed;
+}
+pruneCustomCategoriesAgainstCatalog();
 function addCustomCategory(name){
   name = norm(name);
   if(!name || allCategoryNames().includes(name) || name === 'אחר') return false;
@@ -2411,10 +2423,12 @@ function applyCategorySettingsRow(row){
   iconOverrides = p.iconOverrides || {};
   customCategories = p.customCategories || [];
   removedCatalogItems = p.removedCatalogItems || [];
+  const wasPruned = pruneCustomCategoriesAgainstCatalog();
   localStorage.setItem('category_overrides', JSON.stringify(categoryOverrides));
   localStorage.setItem('icon_overrides', JSON.stringify(iconOverrides));
   localStorage.setItem('custom_categories', JSON.stringify(customCategories));
   localStorage.setItem('removed_catalog_items', JSON.stringify(removedCatalogItems));
+  if(wasPruned) scheduleCategorySettingsPush();
 }
 async function pushCategorySettings(){
   if(!currentUser || !activeCategorySettingsRowId || !sbClient) return;
