@@ -1241,6 +1241,33 @@
     cursor:pointer;
     font-family:'Assistant',sans-serif;
   }
+  .shared-list-title{
+    font-size:12.5px;
+    font-weight:700;
+    color:var(--ink-soft);
+    margin:10px 0 4px;
+  }
+  .shared-list{
+    max-height:112px;
+    overflow-y:auto;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:var(--paper);
+    padding:2px 12px;
+  }
+  .shared-list-row{
+    font-size:13px;
+    padding:7px 0;
+    border-bottom:1px solid var(--line);
+    text-align:right;
+    word-break:break-all;
+  }
+  .shared-list-row:last-child{border-bottom:none;}
+  .shared-list-note{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-top:8px;
+  }
   .ac-chip.ac-already{
     background:var(--mustard-soft);
     color:var(--mustard);
@@ -2589,6 +2616,48 @@ async function shareRow(rowId, email){
   if(error) throw error;
   return data;
 }
+
+// "Who have I shared this with?" — emails resolved server-side (get_shared_emails RPC, owner-only),
+// cached per row so re-renders don't hit the network every time.
+const sharedEmailsCache = {};
+const sharedEmailsPending = {};
+function ownerOfRow(rowId){
+  const all = [].concat(accountShoppingRows, accountRecipeRows, accountStateRows, accountCategorySettingsRows);
+  return all.find(r=>r.id===rowId) || null;
+}
+function paintSharedList(containerId, rowId){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  const row = ownerOfRow(rowId);
+  if(row && currentUser && row.owner_id !== currentUser.id){
+    el.innerHTML = `<div class="shared-list-note">זה מידע ששותף איתכם על ידי ${row.owner_email} — רק הבעלים רואה עם מי הוא משותף.</div>`;
+    return;
+  }
+  const c = sharedEmailsCache[rowId];
+  if(!c){ el.innerHTML = '<div class="shared-list-note">טוענים...</div>'; return; }
+  if(c.error){ el.innerHTML = '<div class="shared-list-note">לא ניתן לטעון כרגע את רשימת השיתוף.</div>'; return; }
+  if(c.emails.length===0){ el.innerHTML = '<div class="shared-list-note">עדיין לא שיתפתם עם אף אחד.</div>'; return; }
+  el.innerHTML = `
+    <div class="shared-list-title">משותף עם (${c.emails.length}):</div>
+    <div class="shared-list">${c.emails.map(e=>`<div class="shared-list-row" dir="ltr">${e}</div>`).join('')}</div>`;
+}
+async function renderSharedList(containerId, rowId, force){
+  if(!rowId || !sbClient || !currentUser) return;
+  paintSharedList(containerId, rowId);
+  const row = ownerOfRow(rowId);
+  if(row && row.owner_id !== currentUser.id) return;
+  if(sharedEmailsCache[rowId] && !force) return;
+  if(sharedEmailsPending[rowId]) return;
+  sharedEmailsPending[rowId] = true;
+  try{
+    const { data, error } = await sbClient.rpc('get_shared_emails', {row_id: rowId});
+    sharedEmailsCache[rowId] = error ? {error:true, emails:[]} : {error:false, emails:(data||[])};
+  }catch(e){
+    sharedEmailsCache[rowId] = {error:true, emails:[]};
+  }
+  delete sharedEmailsPending[rowId];
+  paintSharedList(containerId, rowId);
+}
 async function doLogout(){
   await sbClient.auth.signOut();
   subscribeShoppingRealtime(null);
@@ -2597,6 +2666,7 @@ async function doLogout(){
   activeRecipesRowId = null;
   activeStateRowId = null;
   activeCategorySettingsRowId = null;
+  Object.keys(sharedEmailsCache).forEach(k=>delete sharedEmailsCache[k]);
   localStorage.removeItem('active_shopping_row');
   localStorage.removeItem('active_recipes_row');
   localStorage.removeItem('active_state_row');
@@ -2694,6 +2764,7 @@ function renderAccountBox(){
           <input type="email" id="shareShoppingEmail" placeholder="אימייל של השותף/ה">
           <button id="shareShoppingBtn">שתפו</button>
         </div>
+        <div id="sharedListShopping"></div>
       </div>
       <div class="acct-picker">
         <div class="settings-hint" style="font-weight:700;margin-bottom:4px;">שתפו את המתכונים שלכם עם:</div>
@@ -2701,6 +2772,7 @@ function renderAccountBox(){
           <input type="email" id="shareRecipesEmail" placeholder="אימייל של השותף/ה">
           <button id="shareRecipesBtn">שתפו</button>
         </div>
+        <div id="sharedListRecipes"></div>
       </div>
       <div class="acct-picker">
         <div class="settings-hint" style="font-weight:700;margin-bottom:4px;">שתפו את המקרר ושאר הנתונים (מועדפים, היסטוריה, תוכנית שבועית...) עם:</div>
@@ -2708,6 +2780,7 @@ function renderAccountBox(){
           <input type="email" id="shareStateEmail" placeholder="אימייל של השותף/ה">
           <button id="shareStateBtn">שתפו</button>
         </div>
+        <div id="sharedListState"></div>
       </div>
       <div class="cam-status" id="acctStatus"></div>
     </div>`;
@@ -2728,6 +2801,9 @@ function renderAccountBox(){
     if(row){ applyAppStateRow(row); renderAll(); }
   };
   const status = document.getElementById('acctStatus');
+  renderSharedList('sharedListShopping', activeShoppingRowId);
+  renderSharedList('sharedListRecipes', activeRecipesRowId);
+  renderSharedList('sharedListState', activeStateRowId);
   document.getElementById('shareShoppingBtn').onclick = async ()=>{
     const email = norm(document.getElementById('shareShoppingEmail').value);
     if(!email) return;
@@ -2735,6 +2811,7 @@ function renderAccountBox(){
     try{
       const result = await shareRow(activeShoppingRowId, email);
       status.textContent = result === 'ok' ? '✓ שותף בהצלחה' : 'שגיאה: ' + result;
+      if(result === 'ok') renderSharedList('sharedListShopping', activeShoppingRowId, true);
     }catch(e){ status.textContent = 'שגיאה: ' + (e.message||''); }
   };
   document.getElementById('shareRecipesBtn').onclick = async ()=>{
@@ -2744,6 +2821,7 @@ function renderAccountBox(){
     try{
       const result = await shareRow(activeRecipesRowId, email);
       status.textContent = result === 'ok' ? '✓ שותף בהצלחה' : 'שגיאה: ' + result;
+      if(result === 'ok') renderSharedList('sharedListRecipes', activeRecipesRowId, true);
     }catch(e){ status.textContent = 'שגיאה: ' + (e.message||''); }
   };
   document.getElementById('shareStateBtn').onclick = async ()=>{
@@ -2753,6 +2831,7 @@ function renderAccountBox(){
     try{
       const result = await shareRow(activeStateRowId, email);
       status.textContent = result === 'ok' ? '✓ שותף בהצלחה' : 'שגיאה: ' + result;
+      if(result === 'ok') renderSharedList('sharedListState', activeStateRowId, true);
     }catch(e){ status.textContent = 'שגיאה: ' + (e.message||''); }
   };
 }
@@ -4643,8 +4722,10 @@ function renderCategorySettingsSyncBox(){
         <input type="email" id="shareCategorySettingsEmail" placeholder="אימייל של השותף/ה">
         <button id="shareCategorySettingsBtn">שתפו</button>
       </div>
+      <div id="sharedListCat"></div>
       <div class="cam-status" id="catSettingsStatus"></div>
     </div>`;
+  renderSharedList('sharedListCat', activeCategorySettingsRowId);
   const pickerEl = document.getElementById('catSettingsRowPicker');
   if(pickerEl) pickerEl.onchange = ()=>{
     const row = accountCategorySettingsRows.find(r=>r.id===pickerEl.value);
@@ -4658,6 +4739,7 @@ function renderCategorySettingsSyncBox(){
     try{
       const result = await shareRow(activeCategorySettingsRowId, email);
       status.textContent = result === 'ok' ? '✓ שותף בהצלחה' : 'שגיאה: ' + result;
+      if(result === 'ok') renderSharedList('sharedListCat', activeCategorySettingsRowId, true);
     }catch(e){ status.textContent = 'שגיאה: ' + (e.message||''); }
   };
 }
