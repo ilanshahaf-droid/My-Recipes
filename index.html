@@ -1428,6 +1428,12 @@
   .lm-row{width:100%; text-align:right; border:none; border-bottom:1px solid var(--line); background:none; color:var(--ink); padding:16px 6px; font-size:16px; cursor:pointer; font-family:'Assistant',sans-serif;}
   .lm-row:disabled{opacity:.4; cursor:default;}
   .lm-row.danger{color:var(--brick);}
+  .clear-filters-btn{
+    display:block; margin:6px auto 18px;
+    border:none; background:var(--herb); color:var(--on-herb,#fff);
+    padding:12px 22px; border-radius:100px; font-size:15px; font-weight:800; cursor:pointer;
+    font-family:'Assistant',sans-serif;
+  }
   .shared-list-title{
     font-size:12.5px;
     font-weight:700;
@@ -1913,7 +1919,7 @@
       <h2>מתכונים מתאימים</h2>
       <div class="filters-wrap">
         <div class="search-row">
-          <input type="text" id="searchInput" placeholder="חיפוש מתכון לפי שם...">
+          <input type="search" id="searchInput" name="recipe_search" placeholder="חיפוש מתכון לפי שם..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search">
         </div>
         <div class="filter-row" id="filterRow"></div>
       </div>
@@ -3101,16 +3107,17 @@ function renderAccountBox(){
   }
   if(!currentUser){
     el.innerHTML = `
-      <div class="sync-box">
-        <input type="email" id="acctEmail" placeholder="אימייל" class="acct-input">
-        <input type="password" id="acctPassword" placeholder="סיסמה (לפחות 6 תווים)" class="acct-input">
+      <form class="sync-box" id="acctForm" autocomplete="on">
+        <input type="email" id="acctEmail" name="username" autocomplete="username" placeholder="אימייל" class="acct-input">
+        <input type="password" id="acctPassword" name="password" autocomplete="current-password" placeholder="סיסמה (לפחות 6 תווים)" class="acct-input">
         <div class="acct-btn-row">
-          <button id="acctLoginBtn">התחברות</button>
-          <button id="acctSignupBtn">הרשמה</button>
-          <button id="acctForgotBtn" class="secondary">שכחתי סיסמה</button>
+          <button type="button" id="acctLoginBtn">התחברות</button>
+          <button type="button" id="acctSignupBtn">הרשמה</button>
+          <button type="button" id="acctForgotBtn" class="secondary">שכחתי סיסמה</button>
         </div>
         <div class="cam-status" id="acctStatus"></div>
-      </div>`;
+      </form>`;
+    document.getElementById('acctForm').addEventListener('submit', (e)=>{ e.preventDefault(); document.getElementById('acctLoginBtn').click(); });
     document.getElementById('acctLoginBtn').onclick = async ()=>{
       const email = norm(document.getElementById('acctEmail').value);
       const password = document.getElementById('acctPassword').value;
@@ -4504,7 +4511,11 @@ function renderRecipes(){
   }
 
   if(list.length===0){
-    el.innerHTML = '<p class="empty-state">לא נמצאו מתכונים לפי הסינון שבחרתם — נסו לרכך אחד הפילטרים.</p>';
+    el.innerHTML = recipeFiltersActive()
+      ? '<p class="empty-state">לא נמצאו מתכונים לפי הסינון שבחרתם.</p><button type="button" class="clear-filters-btn" id="clearFiltersBtn">נקו את כל הסינונים</button>'
+      : '<p class="empty-state">אין עדיין מתכונים להצגה — סמנו כמה מצרכים במקרר.</p>';
+    const cf = document.getElementById('clearFiltersBtn');
+    if(cf) cf.onclick = clearAllRecipeFilters;
     return;
   }
 
@@ -5384,10 +5395,40 @@ document.getElementById('customInput').addEventListener('input', (e)=>{
     document.getElementById('customAddBtn').click();
   });
 });
+// A recipe name never looks like an e-mail address — if the browser's autofill drops one in here, throw it away.
+function looksLikeEmail(v){ return /^\s*[^\s@]+@[^\s@]+\.[^\s@]+\s*$/.test(v || ''); }
+function dropAutofilledEmailFromSearch(){
+  const inp = document.getElementById('searchInput');
+  if(inp && looksLikeEmail(inp.value)){ inp.value = ''; filters.search = ''; renderRecipes(); }
+}
 document.getElementById('searchInput').addEventListener('input', (e)=>{
+  if(looksLikeEmail(e.target.value)){ dropAutofilledEmailFromSearch(); return; }
   filters.search = e.target.value;
   renderRecipes();
 });
+document.getElementById('searchInput').addEventListener('change', dropAutofilledEmailFromSearch);
+[400, 1500, 4000].forEach(ms=> setTimeout(dropAutofilledEmailFromSearch, ms));   // autofill can land a moment after load
+
+// Every other text box opts out of saved-credential autofill; only the two login fields (and the e-mail share boxes) are exempt by design.
+function optOutOfAutofill(root){
+  (root || document).querySelectorAll('input:not([autocomplete]), textarea:not([autocomplete])').forEach(el=>{
+    if(el.type === 'checkbox' || el.type === 'radio' || el.type === 'file') return;
+    el.setAttribute('autocomplete', 'off');
+  });
+}
+optOutOfAutofill();
+new MutationObserver(()=>optOutOfAutofill()).observe(document.body, { childList:true, subtree:true });
+
+function recipeFiltersActive(){
+  return !!(filters.search || filters.diet !== 'all' || filters.maxTime || filters.almostReady || filters.hideCooked ||
+            filters.favoritesOnly || filters.cuisine !== 'all' || filters.difficulty !== 'all');
+}
+function clearAllRecipeFilters(){
+  filters = { search:'', diet:'all', maxTime:0, almostReady:false, hideCooked:false, favoritesOnly:false, cuisine:'all', difficulty:'all' };
+  const inp = document.getElementById('searchInput'); if(inp) inp.value = '';
+  renderFilterRow();
+  renderRecipes();
+}
 
 // ——— Import recipes from Word/PDF files ———
 function renderLearnedList(){
