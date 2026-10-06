@@ -1434,6 +1434,38 @@
     padding:12px 22px; border-radius:100px; font-size:15px; font-weight:800; cursor:pointer;
     font-family:'Assistant',sans-serif;
   }
+  .top-suggestion{
+    background:#2B2A26;
+    color:#F6F3EA;
+    border-radius:26px;
+    padding:24px 22px 18px;
+    margin-bottom:20px;
+    box-shadow:0 22px 44px -28px rgba(20,18,12,.65);
+  }
+  body.dark .top-suggestion{background:#23221E; border:1px solid var(--line);}
+  .ts-label{font-size:12px; font-weight:700; color:#C9962E;}
+  .ts-title{font-family:'Frank Ruhl Libre',serif; font-size:32px; font-weight:900; line-height:1.1; margin-top:4px;}
+  .ts-sub{font-size:14.5px; color:#D9D5C7; margin-top:8px;}
+  .ts-tags{display:flex; flex-wrap:wrap; gap:6px; margin-top:12px;}
+  .ts-tag{font-size:12px; font-weight:700; padding:5px 11px; border-radius:100px; background:rgba(255,255,255,.12);}
+  .ts-ok{background:rgba(143,176,133,.35);}
+  .ts-miss{background:rgba(193,68,46,.35);}
+  .ts-quick{background:rgba(201,150,46,.28);}
+  .ts-healthy{background:rgba(143,176,133,.28);}
+  .ts-expiring{background:rgba(201,150,46,.28);}
+  .ts-cta{
+    display:block; width:100%; margin-top:18px;
+    border:none; background:#C1442E; color:#fff;
+    padding:14px; border-radius:100px; font-size:16px; font-weight:800; cursor:pointer;
+    font-family:'Frank Ruhl Libre',serif;
+    box-shadow:0 12px 24px -16px rgba(193,68,46,.8);
+  }
+  .ts-other{
+    display:block; margin:10px auto 0;
+    border:none; background:none; color:#D9D5C7;
+    font-size:13.5px; font-weight:700; cursor:pointer; padding:6px 12px;
+    font-family:'Assistant',sans-serif;
+  }
   .shared-list-title{
     font-size:12.5px;
     font-weight:700;
@@ -1854,6 +1886,91 @@
     cursor:pointer;
     font-family:'Assistant',sans-serif;
   }
+
+  /* ===================== Elevate look =====================
+     Large rounded cards with soft shadows, small accent labels, calmer headings, roomier spacing,
+     pill-shaped inputs and buttons — carried over from the Lovable "Elevate" prototype. */
+  :root{
+    --shadow-soft:0 8px 24px -20px rgba(43,42,38,.45);
+    --shadow-cta:0 12px 24px -16px rgba(193,68,46,.75);
+    --shadow-hair:0 1px 0 rgba(43,42,38,.05);
+  }
+  body.dark{ --shadow-soft:0 8px 24px -18px rgba(0,0,0,.75); --shadow-hair:0 1px 0 rgba(0,0,0,.25); }
+  .wrap{max-width:560px; padding:0 20px 112px;}
+  header.top{padding:16px 0 14px;}
+  .header-row{align-items:center;}
+  .app-logo{width:44px; height:44px; border-radius:14px; box-shadow:var(--shadow-soft);}
+  header.top h1{font-size:20px; font-weight:800; margin:0; letter-spacing:0;}
+  header.top p{font-size:11.5px; font-weight:700; color:var(--brick); margin:0 0 2px;}
+  .theme-btn{box-shadow:var(--shadow-hair);}
+  section{margin-top:28px;}
+  section > h2{font-size:17px; font-weight:800; margin:0 0 12px;}
+
+  /* recipe cards */
+  .recipe-card{border-radius:20px; box-shadow:var(--shadow-soft); margin-bottom:14px; transition:transform .15s ease;}
+  .recipe-card:active{transform:scale(.995);}
+  .daily-card{border:none; border-radius:20px; box-shadow:var(--shadow-soft);}
+  .recipe-head h3{font-size:17px; font-weight:800;}
+  .match-frac{padding:3px 11px; border-radius:100px; font-size:12.5px;}
+  .match-full{background:var(--herb-soft); color:var(--herb);}
+  .match-partial{background:var(--mustard-soft); color:var(--mustard);}
+  .recipe-meta{margin-top:6px;}
+  .top-suggestion{border-radius:28px; margin-bottom:22px;}
+
+  /* inputs + buttons: pills */
+  .search-row input, .add-row input, .cat-add-row input, .shop-toolbar input{border-radius:100px; padding-inline:18px;}
+  .search-row input{padding-block:12px; box-shadow:var(--shadow-hair);}
+  .add-row button, .shop-toolbar button, .cat-add-row button{border-radius:100px; box-shadow:var(--shadow-cta); font-weight:800;}
+  .shop-toolbar button{padding:11px 20px;}
+  .shop-toolbar button.icon-btn{box-shadow:none;}
+
+  /* fridge */
+  .item-grid{border-radius:20px; padding:16px; box-shadow:var(--shadow-soft);}
+  .item-btn{border-color:rgba(91,117,83,.30); font-weight:700; padding:8px 15px; box-shadow:var(--shadow-hair);}
+  .item-btn:not(.selected):hover{background:var(--brick-soft); border-color:var(--brick);}
+  .item-del{border-color:rgba(91,117,83,.30);}
+
+  /* shopping: separate cards instead of one big box */
+  .shopping-panel{background:transparent; border:none; border-radius:0; overflow:visible;}
+  .lists-strip{margin-bottom:16px;}
+  .list-card{border-radius:18px; box-shadow:var(--shadow-soft);}
+  .lists-all-btn{border-radius:18px; box-shadow:var(--shadow-soft);}
+  .shop-toolbar{background:var(--surface); border:1px solid var(--line); border-radius:20px; box-shadow:var(--shadow-soft); padding:14px;}
+  .autocomplete-row{padding:0 4px;}
+  .shop-group{background:var(--surface); border:1px solid var(--line); border-radius:20px; box-shadow:var(--shadow-soft); overflow:hidden; margin-top:18px;}
+  .shop-group:last-of-type{border-bottom:1px solid var(--line);}
+  .shop-group-title{background:transparent; padding:14px 18px 4px; font-size:12.5px;}
+  .shop-item{padding:13px 18px;}
+  .shopping-empty{background:var(--surface); border:1px dashed var(--line); border-radius:20px; text-align:center; padding:30px 18px; margin-top:18px;}
+  .shop-checked-toggle{border-radius:100px;}
+
+  /* settings + sheets */
+  .settings-topic{border-radius:20px; box-shadow:var(--shadow-soft); margin-top:14px;}
+  .topic-head h2{font-size:17px; font-weight:800;}
+  .household-card{border-radius:20px;}
+  .sheet-box{border-radius:28px 28px 0 0;}
+  .lb-card{border-radius:20px; box-shadow:var(--shadow-soft);}
+  .tab-bar{box-shadow:0 -12px 30px -26px rgba(43,42,38,.55);}
+
+  .shop-toolbar #shopAddInput{flex:1 1 100%;}
+  .shop-toolbar input.shop-qty-input{flex:1 1 90px; min-width:80px;}
+  .shop-toolbar #shopAddBtn{flex:0 0 auto;}
+
+  /* fridge chips: ONE clean pill with a quiet × inside it (was a pill + a separate bubble) */
+  .item-btn-wrap{
+    display:inline-flex; align-items:center;
+    border:1px solid rgba(91,117,83,.30); border-radius:100px; overflow:hidden;
+    background:var(--surface); box-shadow:var(--shadow-hair);
+    transition:background .15s, border-color .15s;
+  }
+  .item-btn-wrap .item-btn, .item-btn{border:none; background:transparent; box-shadow:none; border-radius:0; padding:8px 4px 8px 14px; font-weight:700;}
+  .item-btn.selected{background:transparent; color:inherit;}
+  .item-btn-wrap:has(.item-btn.selected){background:var(--herb); border-color:var(--herb); color:var(--on-herb,#fff);}
+  .item-btn-wrap:has(.item-btn.selected) .item-btn{color:var(--on-herb,#fff);}
+  .item-btn-wrap:not(:has(.item-btn.selected)):hover{background:var(--brick-soft); border-color:var(--brick);}
+  .item-del{border:none; background:transparent; color:var(--ink-soft); opacity:.55; font-size:14px; font-weight:400; padding:0 11px 0 9px; align-self:stretch; border-radius:0;}
+  .item-del:hover{background:transparent; opacity:1; color:var(--brick);}
+  .item-btn-wrap:has(.item-btn.selected) .item-del{color:var(--on-herb,#fff); opacity:.7;}
 </style>
 </head>
 <body>
@@ -1871,8 +1988,8 @@
           </svg>
         </div>
         <div>
+          <p id="headerSub">סמנו מה יש בבית, ונציע מה אפשר לבשל</p>
           <h1>מה יש במקרר?</h1>
-          <p>סמנו מה יש בבית, ונציע מה אפשר לבשל</p>
         </div>
       </div>
       <button class="theme-btn" id="themeBtn" title="מצב כהה/בהיר">🌙</button>
@@ -1910,6 +2027,9 @@
         <button class="ranout-toggle" id="weekToggleBtn">▾</button>
       </div>
       <div id="weekPlan" style="display:none;"></div>
+    </section>
+    <section id="topSuggestionSection" style="display:none;">
+      <div id="topSuggestion"></div>
     </section>
     <section>
       <h2>מתכון היום</h2>
@@ -4744,6 +4864,70 @@ function openWeekShopPreview(){
   render();
 }
 
+
+// ---- "ההצעה המובילה" — the best match for what is in the fridge right now (design idea from the Lovable "Elevate" prototype) ----
+let topSuggestionOffset = 0;
+function topSuggestionCandidates(){
+  if(fridge.size === 0) return [];
+  return RECIPES
+    .map(r=>{
+      const have = r.ingredients.filter(i=>fridge.has(i));
+      return { r, have, missing: r.ingredients.filter(i=>!fridge.has(i)), total: r.ingredients.length };
+    })
+    .filter(x=>x.have.length > 0 && x.total > 0)
+    .sort((a,b)=> (b.have.length/b.total) - (a.have.length/a.total) || b.have.length - a.have.length
+                  || (cookedSet.has(a.r.name) - cookedSet.has(b.r.name)) || a.r.name.localeCompare(b.r.name,'he'))
+    .slice(0, 6);
+}
+function renderHeaderSub(){
+  const el = document.getElementById('headerSub');
+  if(!el) return;
+  el.textContent = fridge.size > 0 ? `המקרר שלי · ${fridge.size} מצרכים` : 'סמנו מה יש בבית, ונציע מה אפשר לבשל';
+}
+function renderTopSuggestion(){
+  const section = document.getElementById('topSuggestionSection');
+  const el = document.getElementById('topSuggestion');
+  if(!section || !el) return;
+  const cands = topSuggestionCandidates();
+  if(cands.length === 0){ section.style.display = 'none'; el.innerHTML = ''; return; }
+  const idx = topSuggestionOffset % cands.length;
+  const { r, have, missing } = cands[idx];
+  const full = missing.length === 0;
+  const quick = minutesOf(r) <= 20;
+  const usesExpiring = have.some(i=>{ const st = expiryStatus(i); return st === 'soon' || st === 'expired'; });
+  const shownHave = have.slice(0, 3).join(', ') + (have.length > 3 ? ' ועוד' : '');
+  section.style.display = '';
+  el.innerHTML = `
+    <div class="top-suggestion">
+      <div class="ts-label">${idx === 0 ? 'ההצעה המובילה' : 'הצעה נוספת'}</div>
+      <div class="ts-title">${escHtml(r.name)}</div>
+      <div class="ts-sub">${escHtml(shownHave)} — ${escHtml(r.time)}</div>
+      <div class="ts-tags">
+        <span class="ts-tag ${full?'ts-ok':'ts-miss'}">${full ? 'יש לכם הכול ✓' : `${missing.length} מצרכים חסרים`}</span>
+        ${quick ? '<span class="ts-tag ts-quick">ארוחה מהירה</span>' : ''}
+        ${r.healthy ? '<span class="ts-tag ts-healthy">בריא</span>' : ''}
+        ${usesExpiring ? '<span class="ts-tag ts-expiring">♻️ מנצל מה שעומד לפוג</span>' : ''}
+      </div>
+      <button type="button" class="ts-cta" id="tsOpen">למתכון המלא</button>
+      ${cands.length > 1 ? '<button type="button" class="ts-other" id="tsOther">↻ הצעה אחרת</button>' : ''}
+    </div>`;
+  document.getElementById('tsOpen').onclick = ()=> openRecipeCardByName(r.name);
+  const other = document.getElementById('tsOther');
+  if(other) other.onclick = ()=>{ topSuggestionOffset++; renderTopSuggestion(); };
+}
+// Opens the matching card in the results list (clearing filters first if they would hide it) and scrolls to it.
+function openRecipeCardByName(name){
+  const find = ()=> [...document.querySelectorAll('#recipeResults .recipe-card')].find(c=>{
+    const h = c.querySelector('h3');
+    return h && h.textContent.replace(/^★\s*/, '').trim() === name;
+  });
+  let card = find();
+  if(!card){ clearAllRecipeFilters(); card = find(); }
+  if(!card) return;
+  card.classList.add('open');
+  if(card.scrollIntoView) card.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
 function renderDailyRecipe(){
   const el = document.getElementById('dailyRecipe');
   const pool = RECIPES.filter(r=>r.healthy);
@@ -4789,7 +4973,7 @@ function renderShoppingPanel(){
   let html = renderListSwitcher() + `
     <div class="shop-toolbar">
       <input type="text" id="shopAddInput" placeholder="הוסיפו פריט לרשימה...">
-      <input type="text" id="shopAddQty" placeholder="כמות (לא חובה)" class="shop-qty-input">
+      <input type="text" id="shopAddQty" placeholder="כמות" class="shop-qty-input">
       <button id="shopAddBtn">הוספה</button>
     </div>
     <div class="autocomplete-row" id="shopAutocomplete"></div>
@@ -5250,6 +5434,8 @@ function renderAll(){
   renderItemGrid();
   renderFilterRow();
   renderRecipes();
+  renderTopSuggestion();
+  renderHeaderSub();
   renderDailyRecipe();
   renderShoppingPanel();
   renderTabBadges();
